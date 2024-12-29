@@ -67,8 +67,8 @@ private:
 		if (*refcountPtr == 0)
 		{
 			delete refcountPtr;
-			//delete[] array;
-			fftwf_free(arrayPtr);
+			delete[] arrayPtr;
+			//fftwf_free(arrayPtr);
 		}
 	}
 

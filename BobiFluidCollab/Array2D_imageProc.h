@@ -243,6 +243,9 @@ float sigmaFromKsize(float ksize);
 
 float ksizeFromSigma(float sigma);
 
+// the following doesn't compile?
+#if 0
+
 // KS means it has ksize and sigma args
 template<class T, class FetchFunc>
 Array2D<T> separableConvolve(Array2D<T> src, vector<float>& kernel) {
@@ -331,7 +334,7 @@ template<class T>
 Array2D<T> gaussianBlur(Array2D<T> src, int ksize) {
 	return gaussianBlur<T, WrapModes::DefaultImpl>(src, ksize);
 }
-
+#endif
 
 Array2D<vec3> merge(vector<Array2D<float> > channels);
 
