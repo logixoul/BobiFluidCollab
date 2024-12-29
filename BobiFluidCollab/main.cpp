@@ -7,7 +7,7 @@ void disableGLReadClamp() {
 }
 typedef Array2D<float> Image;
 int wsx = 800, wsy = 800;
-int scale = 8;
+int scale = 3;
 float mouseX, mouseY;
 int sx = wsx / ::scale;
 int sy = wsy / ::scale;
@@ -21,18 +21,6 @@ vector<Material*> materials{ &red, &green };
 float surfTensionThres;
 
 bool pause = false;
-
-/*class Texture2D {
-public:
-	Texture2D() {
-		glGenTextures(1, &id);
-		glBindTexture(GL_TEXTURE_2D, id);
-	}
-
-	GLuint id;
-};*/
-
-
 
 Array2D<float> bounces_dbg;
 
