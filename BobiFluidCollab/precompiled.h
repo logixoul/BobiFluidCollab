@@ -8,6 +8,7 @@
 #include <iostream>
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
+#include <glad/gl.h>
 #undef min
 #undef max
 using namespace glm;

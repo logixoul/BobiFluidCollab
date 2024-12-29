@@ -6,8 +6,8 @@ void disableGLReadClamp() {
 	//glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE);
 }
 typedef Array2D<float> Image;
-int wsx = 400, wsy = 400;
-int scale = 4;
+int wsx = 800, wsy = 800;
+int scale = 8;
 float mouseX, mouseY;
 int sx = wsx / ::scale;
 int sy = wsy / ::scale;
@@ -22,14 +22,17 @@ float surfTensionThres;
 
 bool pause = false;
 
-class Texture2D {
+/*class Texture2D {
 public:
-	Texture2D(ivec2 size, void* data) {
-		
+	Texture2D() {
+		glGenTextures(1, &id);
+		glBindTexture(GL_TEXTURE_2D, id);
 	}
 
-	unsigned int id;
-};
+	GLuint id;
+};*/
+
+
 
 Array2D<float> bounces_dbg;
 
@@ -287,17 +290,29 @@ struct ThisApp {
 int main()
 {
     sf::RenderWindow window(sf::VideoMode({ (unsigned int)wsx, (unsigned int)wsy }), "My window");
+
+	if (!gladLoadGL((GLADloadfunc)sf::Context::getFunction))
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return -1;
+	}
+
 	ThisApp app;
 	app.setup();
 
 	//sf::Image img();
-	sf::Texture tex((void*)::red.img.data, ::red.img.NumBytes());
-	sf::Sprite sprite(tex);
+	//sf::Texture tex((void*)::red.img.data, ::red.img.NumBytes());
+	sf::Texture tex(sf::Vector2u(::red.img.w, ::red.img.h));
+
+
 	while (window.isOpen())
     {
 		app.update();
 		
 		window.clear(sf::Color::Black);
+		sf::Texture::bind(&tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, tex.getSize().x, tex.getSize().y, 0, GL_RED, GL_FLOAT, ::red.img.data);
+		sf::Sprite sprite(tex);
 		window.draw(sprite);
 
 		window.display();
