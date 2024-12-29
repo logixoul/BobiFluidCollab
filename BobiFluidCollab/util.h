@@ -91,13 +91,13 @@ struct Array2D
 	int NumBytes() const {
 		return area * sizeof(T);
 	}
-	ci::ivec2 Size() const { return ci::ivec2(w, h); }
+	glm::ivec2 Size() const { return glm::ivec2(w, h); }
 	ArrayDeleter<T> deleter;
 
 	Array2D(int w, int h, nofill) : deleter(Init(w, h)) { }
-	Array2D(ivec2 s, nofill) : deleter(Init(s.x, s.y)) { }
+	Array2D(glm::ivec2 s, nofill) : deleter(Init(s.x, s.y)) { }
 	Array2D(int w, int h, T const& defaultValue = T()) : deleter(Init(w, h)) { fill(defaultValue); }
-	Array2D(ivec2 s, T const& defaultValue = T()) : deleter(Init(s.x, s.y)) { fill(defaultValue); }
+	Array2D(glm::ivec2 s, T const& defaultValue = T()) : deleter(Init(s.x, s.y)) { fill(defaultValue); }
 	Array2D() : deleter(Init(0, 0)) { }
 	
 	T* begin() { return data; }
@@ -108,8 +108,8 @@ struct Array2D
 	T& operator()(int x, int y) { return data[offsetOf(x, y)]; }
 	T const& operator()(int x, int y) const { return data[offsetOf(x, y)]; }
 
-	T& operator()(ivec2 const& v) { return data[offsetOf(v.x, v.y)]; }
-	T const& operator()(ivec2 const& v) const { return data[offsetOf(v.x, v.y)]; }
+	T& operator()(glm::ivec2 const& v) { return data[offsetOf(v.x, v.y)]; }
+	T const& operator()(glm::ivec2 const& v) const { return data[offsetOf(v.x, v.y)]; }
 	
 	ivec2 wrapPoint(ivec2 p)
 	{
@@ -184,7 +184,7 @@ Array2D<T> ones_like(Array2D<T> a) {
 
 template<class T>
 Array2D<T> zeros_like(Array2D<T> a) {
-	return Array2D<T>(a.Size(), ::zero<T>());
+	return Array2D<T>(a.Size(), T(0));
 }
 
 template<class InputIt, class T>

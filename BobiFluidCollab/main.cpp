@@ -1,4 +1,4 @@
-﻿#include <SFML/Window.hpp>
+﻿#include "precompiled.h"
 
 int main()
 {

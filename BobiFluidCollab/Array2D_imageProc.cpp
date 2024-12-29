@@ -68,16 +68,16 @@ vector<float> getGaussianKernel(int ksize, float sigma) {
 }
 
 float sigmaFromKsize(float ksize) {
-	float sigma = 0.3*((ksize - 1)*0.5 - 1) + 0.8;
+	float sigma = 0.3f*((ksize - 1)*0.5f - 1) + 0.8f;
 	return sigma;
 }
 
 float ksizeFromSigma(float sigma) {
 	// ceil just to be sure
-	int ksize = ceil(((sigma - 0.8) / 0.3 + 1) / 0.5 + 1);
+	int ksize = (int)ceil(((sigma - 0.8f) / 0.3f + 1) / 0.5f + 1);
 	if (ksize % 2 == 0)
 		ksize++;
-	return ksize;
+	return (float)ksize;
 }
 
 Array2D<vec2> gradientForward(Array2D<float> a) {

@@ -96,7 +96,7 @@ void aaPoint(Array2D<T>& dst, float x, float y, T value)
 template<class T>
 void aaPoint(Array2D<T>& dst, float x, float y, T value)
 {
-	aaPoint<T, WrapModes::DefaultImpl>(dst, p.x, p.y, value);
+	aaPoint<T, WrapModes::DefaultImpl>(dst, x, y, value);
 }
 template<class T>
 void aaPoint(Array2D<T>& dst, vec2 p, T value)
@@ -249,7 +249,7 @@ Array2D<T> separableConvolve(Array2D<T> src, vector<float>& kernel) {
 	int ksize = kernel.size();
 	int r = ksize / 2;
 
-	T zero = ::zero<T>();
+	T zero = T(0);
 	Array2D<T> dst1(src.w, src.h);
 	Array2D<T> dst2(src.w, src.h);
 
