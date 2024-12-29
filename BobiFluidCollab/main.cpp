@@ -302,7 +302,6 @@ int main()
 
 	//sf::Image img();
 	//sf::Texture tex((void*)::red.img.data, ::red.img.NumBytes());
-	sf::Texture tex(sf::Vector2u(::red.img.w, ::red.img.h));
 
 
 	while (window.isOpen())
@@ -310,9 +309,20 @@ int main()
 		app.update();
 		
 		window.clear(sf::Color::Black);
-		sf::Texture::bind(&tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, tex.getSize().x, tex.getSize().y, 0, GL_RED, GL_FLOAT, ::red.img.data);
+		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
+		forxy(::red.img) {
+			unsigned char L = ::red.img(p)*255;
+			if (p.x > sx / 2) L = 128;
+			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
+		}
+
+
+		sf::Texture tex(sf::Vector2u(sx, sy));
+		tex.update(toUpload);
+		/*sf::Texture::bind(&tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, tex.getSize().x, tex.getSize().y, 0, GL_RED, GL_FLOAT, ::red.img.data);*/
 		sf::Sprite sprite(tex);
+		sprite.setScale(sf::Vector2f(::scale, ::scale));
 		window.draw(sprite);
 
 		window.display();
