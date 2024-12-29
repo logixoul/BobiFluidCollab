@@ -50,7 +50,15 @@ void mm(string desc, Array2D<vec2> arr) {
 float sq(float f) {
 	return f * f;
 }
-
+ivec2 clampPoint(ivec2 p, int w, int h)
+{
+	ivec2 wp = p;
+	if (wp.x < 0) wp.x = 0;
+	if (wp.x > w - 1) wp.x = w - 1;
+	if (wp.y < 0) wp.y = 0;
+	if (wp.y > h - 1) wp.y = h - 1;
+	return wp;
+}
 vector<float> getGaussianKernel(int ksize, float sigma) {
 	vector<float> result;
 	int r = ksize / 2;

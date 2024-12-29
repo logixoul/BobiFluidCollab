@@ -7,6 +7,7 @@
 #include <string>
 #include <iostream>
 #include <SFML/Window.hpp>
+#include <SFML/OpenGL.hpp>
 #undef min
 #undef max
 using namespace glm;
