@@ -334,9 +334,11 @@ template<class T>
 Array2D<T> gaussianBlur(Array2D<T> src, int ksize) {
 	return gaussianBlur<T, WrapModes::DefaultImpl>(src, ksize);
 }
-#endif
-template<class T, class FetchFunc>
+#else
+/*template<class T, class FetchFunc>
 Array2D<T> separableConvolve(Array2D<T> src, vector<float>& kernel) {
+	FetchFunc::fetch<T>(src, 0, 0);
+
 	return {};
 }
 // one-arg version for backward compatibility
@@ -348,7 +350,8 @@ Array2D<T> gaussianBlur(Array2D<T> src, int ksize) { // ksize must be odd.
 template<class T>
 Array2D<T> gaussianBlur(Array2D<T> src, int ksize) {
 	return gaussianBlur<T, WrapModes::DefaultImpl>(src, ksize);
-}
+}*/
+#endif
 
 Array2D<vec3> merge(vector<Array2D<float> > channels);
 
