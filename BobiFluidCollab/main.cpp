@@ -105,7 +105,7 @@ struct ThisApp {
 
 		for (int x = 0; x < sz.x; x++) {
 			for (int y = sz.y * .75; y < sz.y; y++) {
-				//red.img(x, y) = 1;
+				red.img(x, y) = 1;
 			}
 		}
 	}
@@ -121,7 +121,7 @@ struct ThisApp {
 
 		} // if ! pause
 		//auto material = keys['g'] ? &green : &red;
-		auto material = &green;
+		auto material = &red;
 
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
@@ -311,8 +311,9 @@ int main()
 		window.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
 		forxy(::red.img) {
-			unsigned char L = ::red.img(p)*255;
-			if (p.x > sx / 2) L = 128;
+			float Lfloat = ::red.img(p);
+			Lfloat /= Lfloat + 1.0f;
+			unsigned char L = Lfloat*255;
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
 		}
 
