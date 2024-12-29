@@ -22,6 +22,15 @@ float surfTensionThres;
 
 bool pause = false;
 
+class Texture2D {
+public:
+	Texture2D(ivec2 size, void* data) {
+		
+	}
+
+	unsigned int id;
+};
+
 Array2D<float> bounces_dbg;
 
 template<class T, class FetchFunc>
@@ -100,7 +109,7 @@ struct ThisApp {
 	vec2 direction;
 	vec2 lastm;
 
-	void stefanUpdate()
+	void update()
 	{
 		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
@@ -277,14 +286,22 @@ struct ThisApp {
 
 int main()
 {
-    sf::Window window(sf::VideoMode({ (unsigned int)wsx, (unsigned int)wsy }), "My window");
+    sf::RenderWindow window(sf::VideoMode({ (unsigned int)wsx, (unsigned int)wsy }), "My window");
 	ThisApp app;
 	app.setup();
 
-    while (window.isOpen())
+	//sf::Image img();
+	sf::Texture tex((void*)::red.img.data, ::red.img.NumBytes());
+	sf::Sprite sprite(tex);
+	while (window.isOpen())
     {
-		app.stefanUpdate();
-		//app.stefanDraw();
+		app.update();
+		
+		window.clear(sf::Color::Black);
+		window.draw(sprite);
+
+		window.display();
+		//app.draw();
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())

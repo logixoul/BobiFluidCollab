@@ -13,6 +13,7 @@ project ("BobiFluidCollab" LANGUAGES CXX)
 
 # Include sub-projects.
 add_subdirectory ("BobiFluidCollab")
+add_subdirectory("lib/glad")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -24,3 +25,4 @@ FetchContent_Declare(SFML
     EXCLUDE_FROM_ALL
     SYSTEM)
 FetchContent_MakeAvailable(SFML)
+
