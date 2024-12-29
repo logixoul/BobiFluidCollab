@@ -1,9 +1,9 @@
-﻿# CMakeList.txt : CMake project for BobiFluidCollab, include source and define
-# project specific logic here.
-#
+﻿file(GLOB SOURCES
+    ./*.h
+    ./*.cpp
+)
 
-# Add source to this project's executable.
-add_executable (BobiFluidCollab "main.cpp" )
+add_executable (BobiFluidCollab ${SOURCES}  "precompiled.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET BobiFluidCollab PROPERTY CXX_STANDARD 20)
