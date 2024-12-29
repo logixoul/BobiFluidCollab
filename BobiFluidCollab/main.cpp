@@ -128,7 +128,7 @@ struct ThisApp {
 		{
 			//vec2 scaledm = vec2(getMousePos()-getWindow()->getPos()) / float(::scale); //vec2(mouseX * (float)sx, mouseY * (float)sy);
 
-			int r = 80 / pow(2, ::scale);
+			int r = 80 / ::scale;
 
 			ivec2 areaTopLeft = scaledm - ivec2(r, r);
 			ivec2 areaBottomRight = scaledm + ivec2(r, r);
@@ -145,7 +145,7 @@ struct ThisApp {
 			}
 		}
 		else if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
-			int r = 80 / pow(2, ::scale);
+			int r = 80 / ::scale;
 
 			ivec2 areaTopLeft = scaledm - ivec2(r, r);
 			ivec2 areaBottomRight = scaledm + ivec2(r, r);
