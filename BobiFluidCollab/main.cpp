@@ -25,13 +25,6 @@ bool pause = false;
 Array2D<float> bounces_dbg;
 
 template<class T, class FetchFunc>
-Array2D<T> separableConvolveDelme(Array2D<T> src, vector<float>& kernel) {
-	FetchFunc::fetch<T>(src, 0, 0);
-
-	return {};
-}
-
-template<class T, class FetchFunc>
 static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
 	T zero = T(0);
 	Array2D<T> dst1(src.w, src.h);
@@ -197,7 +190,7 @@ struct ThisApp {
 
 			auto img_b = img.clone();
 			//for(int i < 0
-			//img_b = gaussianBlur<float, WrapModes::GetClamped>(img_b, 3 * 2 + 1);
+			img_b = gaussianBlur<float, WrapModes::GetClamped>(img_b, 3 * 2 + 1);
 			auto& guidance = img_b;
 			forxy(tmpEnergy)
 			{

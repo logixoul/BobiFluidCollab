@@ -243,8 +243,7 @@ float sigmaFromKsize(float ksize);
 
 float ksizeFromSigma(float sigma);
 
-// the following doesn't compile?
-#if 0
+#if 1
 
 // KS means it has ksize and sigma args
 template<class T, class FetchFunc>
@@ -272,7 +271,7 @@ Array2D<T> separableConvolve(Array2D<T> src, vector<float>& kernel) {
 				T sum = zero;
 				for (int xadd = -r; xadd <= r; xadd++)
 				{
-					sum += kernel[xadd + r] * (FetchFunc::fetch<T>(src, x + xadd, y));
+					sum += kernel[xadd + r] * (FetchFunc::template fetch<T>(src, x + xadd, y));
 				}
 				dst1(x, y) = sum;
 			}
@@ -304,7 +303,7 @@ Array2D<T> separableConvolve(Array2D<T> src, vector<float>& kernel) {
 				T sum = zero;
 				for (int yadd = -r; yadd <= r; yadd++)
 				{
-					sum += kernel[yadd + r] * FetchFunc::fetch<T>(dst1, x, y + yadd);
+					sum += kernel[yadd + r] * FetchFunc::template fetch<T>(dst1, x, y + yadd);
 				}
 				dst2(x, y) = sum;
 			}
