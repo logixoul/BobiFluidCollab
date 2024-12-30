@@ -85,11 +85,10 @@ struct ThisApp {
 		return std::nullopt;
 	}
 	void reset() {
-		std::fill(red.img.begin(), red.img.end(), 0.0f);
-		std::fill(red.tmpEnergy.begin(), red.tmpEnergy.end(), vec2());
-
-		std::fill(green.img.begin(), green.img.end(), 0.0f);
-		std::fill(green.tmpEnergy.begin(), green.tmpEnergy.end(), vec2());
+		for (Material* material : materials) {
+			std::fill(material->img.begin(), material->img.end(), 0.0f);
+			std::fill(material->tmpEnergy.begin(), material->tmpEnergy.end(), vec2());
+		}
 
 		for (int x = 0; x < sz.x; x++) {
 			for (int y = sz.y * .75; y < sz.y; y++) {
@@ -288,10 +287,6 @@ int main()
 	ThisApp app;
 	app.setup();
 
-	//sf::Image img();
-	//sf::Texture tex((void*)::red.img.data, ::red.img.NumBytes());
-
-
 	while (window.isOpen())
     {
 		app.update();
@@ -305,11 +300,8 @@ int main()
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
 		}
 
-
 		sf::Texture tex(sf::Vector2u(sx, sy));
 		tex.update(toUpload);
-		/*sf::Texture::bind(&tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, tex.getSize().x, tex.getSize().y, 0, GL_RED, GL_FLOAT, ::red.img.data);*/
 		sf::Sprite sprite(tex);
 		sprite.setScale(sf::Vector2f(::scale, ::scale));
 		window.draw(sprite);

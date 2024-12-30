@@ -14,4 +14,4 @@ target_include_directories(BobiFluidCollab PRIVATE "../lib/glm")
 
 # TODO: Add tests and install targets if needed.
 
-target_link_libraries(BobiFluidCollab PRIVATE SFML::Graphics glad)
+target_link_libraries(BobiFluidCollab PRIVATE SFML::Graphics glad ImGui-SFML::ImGui-SFML)
