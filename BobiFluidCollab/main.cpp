@@ -96,7 +96,18 @@ struct ThisApp {
 		
 		
 	}
-
+	void operator()(const sf::Event::MouseButtonPressed& e) {
+		if (e.button == sf::Mouse::Button::Left)
+			this->mLeftMouseButtonHeld = true;
+		else if (e.button == sf::Mouse::Button::Right)
+			this->mRightMouseButtonHeld = true;
+	}
+	void operator()(const sf::Event::MouseButtonReleased& e) {
+		if (e.button == sf::Mouse::Button::Left)
+			this->mLeftMouseButtonHeld = false;
+		else if (e.button == sf::Mouse::Button::Right)
+			this->mRightMouseButtonHeld = false;
+	}
 	void operator()(const sf::Event::MouseMoved& mouseMoved)
 	{
 		ivec2 newPos(mouseMoved.position.x, mouseMoved.position.y);
@@ -152,7 +163,6 @@ struct ThisApp {
 		sprite.setScale(sf::Vector2f(::scale, ::scale));
 		mWindow.draw(sprite);
 		ImGui::SFML::Render(mWindow);
-		//app.draw();
 		mWindow.display();
 	}
 	void update()
@@ -167,7 +177,7 @@ struct ThisApp {
 		auto material = &red;
 
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
-		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+		if (mLeftMouseButtonHeld)
 		{
 			//vec2 scaledm = vec2(getMousePos()-getWindow()->getPos()) / float(::scale); //vec2(mouseX * (float)sx, mouseY * (float)sy);
 
@@ -187,7 +197,7 @@ struct ThisApp {
 				}
 			}
 		}
-		else if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
+		else if (mRightMouseButtonHeld) {
 			int r = 80 / ::scale;
 
 			ivec2 areaTopLeft = scaledm - ivec2(r, r);
