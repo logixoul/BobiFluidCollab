@@ -61,9 +61,9 @@ struct StefanFluidSketch1 {
 		sz = ivec2(sx, sy);
 
 		mRedMaterial = Material(sz);
-		mRedMaterial.color = vec3(1.0f, 0.2f, 0.1f);
+		mRedMaterial.color = vec3(1.0f, 0.7f, 0.4f);
 		mGreenMaterial = Material(sz);
-		mGreenMaterial.color = vec3(0.2f, 1.0f, 0.1f);
+		mGreenMaterial.color = vec3(0.7f, 1.0f, 0.4f);
 		materials = { &mRedMaterial, &mGreenMaterial };
 	}
 	void setup()
@@ -133,7 +133,7 @@ struct StefanFluidSketch1 {
 		forxy(mRedMaterial.density) {
 			vec3 totalColor = vec3(1.0f, 1.0f, 1.0f);
 			for (Material* material : materials) {
-				totalColor *= glm::pow(material->color, vec3(1.0f / material->density(p)));
+				totalColor *= glm::pow(material->color, vec3(0.1f*material->density(p)));
 			}
 			//totalColor /= totalColor + vec3(1.0f);
 			totalColor *= 255.0f;
