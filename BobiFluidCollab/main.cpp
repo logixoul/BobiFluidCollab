@@ -98,14 +98,13 @@ struct ThisApp {
 		disableGLReadClamp();
 		reset();
 	}
-	void operator()(const sf::Event::KeyPressed& keyPress)
+	void operator()(const sf::Event::KeyPressed& e)
 	{
-		// When the enter key is pressed, switch to the next handler type
-		if (keyPress.code == sf::Keyboard::Key::R)
+		if (e.code == sf::Keyboard::Key::R)
 		{
 			reset();
 		}
-		if (keyPress.code == sf::Keyboard::Key::P)
+		if (e.code == sf::Keyboard::Key::P)
 		{
 			pause = !pause;
 		}
@@ -124,9 +123,9 @@ struct ThisApp {
 		else if (e.button == sf::Mouse::Button::Right)
 			this->mRightMouseButtonHeld = false;
 	}
-	void operator()(const sf::Event::MouseMoved& mouseMoved)
+	void operator()(const sf::Event::MouseMoved& e)
 	{
-		ivec2 newPos(mouseMoved.position.x, mouseMoved.position.y);
+		ivec2 newPos(e.position.x, e.position.y);
 
 
 		::mouseX = newPos.x / (float)wsx;
@@ -138,7 +137,7 @@ struct ThisApp {
 		
 		
 	}
-	void operator()(const sf::Event::Closed& closed)
+	void operator()(const sf::Event::Closed& e)
 	{
 		mWindow.close();
 
@@ -359,8 +358,6 @@ int main()
 			ImGui::SFML::ProcessEvent(window, *event);
 			if (ImGui::GetIO().WantCaptureMouse && isMouseEvent(*event))
 			{
-				//if(event->is<sf::Event::MouseButtonPressed
-				//cout << "capturing mouse" << endl;
 				continue;
 			}
 
