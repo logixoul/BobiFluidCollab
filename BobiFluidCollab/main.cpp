@@ -32,24 +32,7 @@ static bool isKeyboardEvent(const sf::Event& eve)
 void disableGLReadClamp() {
 	//glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE);
 }
-typedef Array2D<float> Image;
-int wsx = 800, wsy = 800;
-int scale = 3;
 float mouseX, mouseY;
-int sx = wsx / ::scale;
-int sy = wsy / ::scale;
-ivec2 sz(sx, sy);
-struct Material {
-	Array2D<float> img = Array2D<float>(sx, sy);
-	Array2D<vec2> tmpEnergy = Array2D<vec2>(sx, sy);
-};
-Material red, green;
-vector<Material*> materials{ &red, &green };
-float surfTensionThres;
-
-bool pause = false;
-
-Array2D<float> bounces_dbg;
 
 template<class T, class FetchFunc>
 static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
@@ -91,7 +74,37 @@ struct ThisApp {
 	bool mLeftMouseButtonHeld = false;
 	bool mRightMouseButtonHeld = false;
 
+	const int mScale = 5;
+	int sx;
+	int sy;
+	ivec2 sz;
+	struct Material {
+		Material() {
+		}
+		Material(ivec2 size) {
+			img = Array2D<float>(size);
+			tmpEnergy = Array2D<vec2>(size);
+		}
+		Array2D<float> img;
+		Array2D<vec2> tmpEnergy;
+	};
+	Material mRedMaterial, mGreenMaterial;
+	vector<Material*> materials{ &mRedMaterial, &mGreenMaterial };
+
+	bool pause = false;
+
+	Array2D<float> bounces_dbg;
+
+
+
 	ThisApp(sf::RenderWindow* window) : mWindow(*window) {
+		sx = window->getSize().x / mScale;
+		sy = window->getSize().y / mScale;
+		sz = ivec2(sx, sy);
+
+		mRedMaterial = Material(sz);
+		mGreenMaterial = Material(sz);
+		materials = { &mRedMaterial, &mGreenMaterial };
 	}
 	void setup()
 	{
@@ -128,8 +141,8 @@ struct ThisApp {
 		ivec2 newPos(e.position.x, e.position.y);
 
 
-		::mouseX = newPos.x / (float)wsx;
-		::mouseY = newPos.y / (float)wsy;
+		::mouseX = newPos.x / (float)mWindow.getSize().x;
+		::mouseY = newPos.y / (float)mWindow.getSize().y;
 
 		
 		direction = vec2(newPos) - lastm;
@@ -154,19 +167,19 @@ struct ThisApp {
 			std::fill(material->tmpEnergy.begin(), material->tmpEnergy.end(), vec2());
 		}
 
-		for (int x = 0; x < sz.x; x++) {
+		/*for (int x = 0; x < sz.x; x++) {
 			for (int y = sz.y * .75; y < sz.y; y++) {
 				red.img(x, y) = 1;
 			}
-		}
+		}*/
 	}
 	vec2 direction;
 	vec2 lastm;
 	void draw() {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
-		forxy(::red.img) {
-			float Lfloat = ::red.img(p);
+		forxy(mRedMaterial.img) {
+			float Lfloat = mRedMaterial.img(p);
 			Lfloat /= Lfloat + 1.0f;
 			unsigned char L = Lfloat * 255;
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
@@ -175,7 +188,7 @@ struct ThisApp {
 		sf::Texture tex(sf::Vector2u(sx, sy));
 		tex.update(toUpload);
 		sf::Sprite sprite(tex);
-		sprite.setScale(sf::Vector2f(::scale, ::scale));
+		sprite.setScale(sf::Vector2f(mScale, mScale));
 		mWindow.draw(sprite);
 		ImGui::SFML::Render(mWindow);
 		mWindow.display();
@@ -191,14 +204,14 @@ struct ThisApp {
 
 		} // if ! pause
 		//auto material = keys['g'] ? &green : &red;
-		auto material = &red;
+		auto material = &mRedMaterial;
 
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
 		if (mLeftMouseButtonHeld)
 		{
-			//vec2 scaledm = vec2(getMousePos()-getWindow()->getPos()) / float(::scale); //vec2(mouseX * (float)sx, mouseY * (float)sy);
+			//vec2 scaledm = vec2(getMousePos()-getWindow()->getPos()) / float(mScale); //vec2(mouseX * (float)sx, mouseY * (float)sy);
 
-			int r = 80 / ::scale;
+			int r = 80 / mScale;
 
 			ivec2 areaTopLeft = scaledm - ivec2(r, r);
 			ivec2 areaBottomRight = scaledm + ivec2(r, r);
@@ -215,7 +228,7 @@ struct ThisApp {
 			}
 		}
 		else if (mRightMouseButtonHeld) {
-			int r = 80 / ::scale;
+			int r = 80 / mScale;
 
 			ivec2 areaTopLeft = scaledm - ivec2(r, r);
 			ivec2 areaBottomRight = scaledm + ivec2(r, r);
@@ -228,7 +241,7 @@ struct ThisApp {
 					float w = std::max(0.0f, 1.0f - length(v) / r);
 					w = 3 * w * w - 2 * w * w * w;
 					if (material->img.wr(x, y) != 0.0f)
-						material->tmpEnergy.wr(x, y) += w * material->img.wr(x, y) * 4.0f * direction / (float)::scale;
+						material->tmpEnergy.wr(x, y) += w * material->img.wr(x, y) * 0.5f * direction / (float)mScale;
 				}
 			}
 		}
@@ -236,11 +249,11 @@ struct ThisApp {
 
 	void doFluidStep() {
 		//for (int i = 0; i < 4; i++) {
-			//repel(::red, ::green);
-			//repel(::green, ::red);
+			//repel(mRedMaterial, ::green);
+			//repel(::green, mRedMaterial);
 		//}
 
-		for (auto material : ::materials) {
+		for (auto material : materials) {
 			auto& tmpEnergy = material->tmpEnergy;
 			auto& img = material->img;
 
@@ -259,7 +272,7 @@ struct ThisApp {
 			forxy(tmpEnergy)
 			{
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
-				if (img_b(p) < surfTensionThres)
+				if (img_b(p) < mConfig.surfTensionThres)
 				{
 					// todo: move the  "* img(p)" back outside the if.
 					// todo: readd the safeNormalized()
@@ -331,7 +344,7 @@ struct ThisApp {
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode({ (unsigned int)wsx, (unsigned int)wsy }), "My window");
+    sf::RenderWindow window(sf::VideoMode({ 800, 800 }), "My window");
 	window.setFramerateLimit(60);
 	if (!ImGui::SFML::Init(window))
 		return -1;
