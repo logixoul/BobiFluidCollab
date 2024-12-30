@@ -1,6 +1,8 @@
 ﻿#include "precompiled.h"
 #include "Array2D_imageProc.h"
 #include "util.h"
+#include <imgui.h>
+#include <imgui-SFML.h>
 
 void disableGLReadClamp() {
 	//glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE);
@@ -277,6 +279,9 @@ struct ThisApp {
 int main()
 {
     sf::RenderWindow window(sf::VideoMode({ (unsigned int)wsx, (unsigned int)wsy }), "My window");
+	window.setFramerateLimit(60);
+	if (!ImGui::SFML::Init(window))
+		return -1;
 
 	if (!gladLoadGL((GLADloadfunc)sf::Context::getFunction))
 	{
@@ -286,9 +291,15 @@ int main()
 
 	ThisApp app;
 	app.setup();
-
+	sf::Clock deltaClock;
 	while (window.isOpen())
     {
+		ImGui::SFML::Update(window, deltaClock.restart());
+
+		ImGui::Begin("Hello, world!");
+		ImGui::Button("Look at this pretty button");
+		ImGui::End();
+
 		app.update();
 		
 		window.clear(sf::Color::Black);
@@ -305,11 +316,14 @@ int main()
 		sf::Sprite sprite(tex);
 		sprite.setScale(sf::Vector2f(::scale, ::scale));
 		window.draw(sprite);
-
+		ImGui::SFML::Render(window);
 		window.display();
 		//app.draw();
+
         while (const std::optional event = window.pollEvent())
         {
+			ImGui::SFML::ProcessEvent(window, *event);
+			
             if (event->is<sf::Event::Closed>())
                 window.close();
 			event->visit(app);
