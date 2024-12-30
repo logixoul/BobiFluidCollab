@@ -187,15 +187,28 @@ struct StefanFluidSketch1 {
 		}
 	}
 
-	/*void repel(Material& affectedMaterial, Material& actingMaterial) {
-		auto 
-		forxy(affectedMaterial)
-	}*/
+	void repel(Material& affectedMaterial, Material& actingMaterial) {
+		auto img_b = actingMaterial.density.clone();
+		img_b = gaussianBlur<float, WrapModes::GetClamped>(img_b, 3 * 2 + 1);
+		auto& guidance = img_b;
+		forxy(affectedMaterial.momentum)
+		{
+			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
+			
+			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p);
+		}
+
+		/*auto offsets = empty_like(momentum);
+		forxy(offsets) {
+			offsets(p) = momentum(p) / density(p);
+		}
+		advect(*material, offsets);*/
+	}
 
 	void doFluidStep() {
 		//for (int i = 0; i < 4; i++) {
-		//	repel(mRedMaterial, mGreenMaterial);
-		//	repel(mGreenMaterial, mRedMaterial);
+			repel(mRedMaterial, mGreenMaterial);
+			repel(mGreenMaterial, mRedMaterial);
 		//}
 
 		for (auto material : materials) {
