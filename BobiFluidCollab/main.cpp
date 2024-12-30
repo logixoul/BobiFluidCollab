@@ -55,7 +55,7 @@ static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
 
 struct ThisApp {
 	struct Config {
-		float surfTensionThres = 0.04f;
+		float surfTensionThres = 2.245f;
 		float surfTension = 1.0f;
 		float gravity = .1f;
 		float incompressibilityCoef = 1.0f;
@@ -181,12 +181,13 @@ struct ThisApp {
 		forxy(mRedMaterial.img) {
 			float Lfloat = mRedMaterial.img(p);
 			Lfloat /= Lfloat + 1.0f;
-			unsigned char L = Lfloat * 255;
+			unsigned char L = 255-Lfloat * 255;
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
 		}
 
 		sf::Texture tex(sf::Vector2u(sx, sy));
 		tex.update(toUpload);
+		tex.setSmooth(true);
 		sf::Sprite sprite(tex);
 		sprite.setScale(sf::Vector2f(mScale, mScale));
 		mWindow.draw(sprite);
