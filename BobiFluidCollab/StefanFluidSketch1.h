@@ -162,9 +162,6 @@ struct StefanFluidSketch1 {
 			doFluidStep();
 
 		} // if ! pause
-		//auto material = keys['g'] ? &green : &red;
-		auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
-
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
 		int r = 80 / mScale;
 		ivec2 areaTopLeft = scaledm - ivec2(r, r);
@@ -180,11 +177,15 @@ struct StefanFluidSketch1 {
 					w = 3 * w * w - 2 * w * w * w;
 					
 					if (mLeftMouseButtonHeld) {
+						auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
+
 						material->density.wr(x, y) += 1.f * w * 10.0;
 					}
 					else if (mRightMouseButtonHeld) {
-						if (material->density.wr(x, y) != 0.0f)
-							material->momentum.wr(x, y) += w * material->density.wr(x, y) * 0.5f * direction / (float)mScale;
+						for (Material* material : materials) {
+							if (material->density.wr(x, y) != 0.0f)
+								material->momentum.wr(x, y) += w * material->density.wr(x, y) * 0.5f * direction / (float)mScale;
+						}
 					}
 				}
 			}
