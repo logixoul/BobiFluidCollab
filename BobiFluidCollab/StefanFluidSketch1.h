@@ -36,11 +36,11 @@ struct StefanFluidSketch1 {
 		Material() {
 		}
 		Material(ivec2 size) {
-			img = Array2D<float>(size);
-			tmpEnergy = Array2D<vec2>(size);
+			density = Array2D<float>(size);
+			momentum = Array2D<vec2>(size);
 		}
-		Array2D<float> img;
-		Array2D<vec2> tmpEnergy;
+		Array2D<float> density;
+		Array2D<vec2> momentum;
 	};
 	Material mRedMaterial, mGreenMaterial;
 	vector<Material*> materials{ &mRedMaterial, &mGreenMaterial };
@@ -75,8 +75,6 @@ struct StefanFluidSketch1 {
 		{
 			pause = !pause;
 		}
-
-
 	}
 	void operator()(const sf::Event::MouseButtonPressed& e) {
 		if (e.button == sf::Mouse::Button::Left)
@@ -101,14 +99,10 @@ struct StefanFluidSketch1 {
 
 		direction = vec2(newPos) - lastm;
 		lastm = newPos;
-
-
 	}
 	void operator()(const sf::Event::Closed& e)
 	{
 		mWindow.close();
-
-
 	}
 	template <typename T>
 	void operator()(const T&)
@@ -117,8 +111,8 @@ struct StefanFluidSketch1 {
 	}
 	void reset() {
 		for (Material* material : materials) {
-			std::fill(material->img.begin(), material->img.end(), 0.0f);
-			std::fill(material->tmpEnergy.begin(), material->tmpEnergy.end(), vec2());
+			std::fill(material->density.begin(), material->density.end(), 0.0f);
+			std::fill(material->momentum.begin(), material->momentum.end(), vec2());
 		}
 	}
 	vec2 direction;
@@ -126,8 +120,8 @@ struct StefanFluidSketch1 {
 	void draw() {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
-		forxy(mRedMaterial.img) {
-			float Lfloat = mRedMaterial.img(p);
+		forxy(mRedMaterial.density) {
+			float Lfloat = mRedMaterial.density(p);
 			Lfloat /= Lfloat + 1.0f;
 			unsigned char L = 255 - Lfloat * 255;
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
@@ -170,11 +164,11 @@ struct StefanFluidSketch1 {
 					w = 3 * w * w - 2 * w * w * w;
 					
 					if (mLeftMouseButtonHeld) {
-						material->img.wr(x, y) += 1.f * w * 10.0;
+						material->density.wr(x, y) += 1.f * w * 10.0;
 					}
 					else if (mRightMouseButtonHeld) {
-						if (material->img.wr(x, y) != 0.0f)
-							material->tmpEnergy.wr(x, y) += w * material->img.wr(x, y) * 0.5f * direction / (float)mScale;
+						if (material->density.wr(x, y) != 0.0f)
+							material->momentum.wr(x, y) += w * material->density.wr(x, y) * 0.5f * direction / (float)mScale;
 					}
 				}
 			}
@@ -188,63 +182,63 @@ struct StefanFluidSketch1 {
 		//}
 
 		for (auto material : materials) {
-			auto& tmpEnergy = material->tmpEnergy;
-			auto& img = material->img;
+			auto& momentum = material->momentum;
+			auto& density = material->density;
 
-			forxy(tmpEnergy)
+			forxy(momentum)
 			{
-				tmpEnergy(p) += vec2(0.0f, mConfig.gravity) * img(p);
+				momentum(p) += vec2(0.0f, mConfig.gravity) * density(p);
 			}
 
-			img = gauss3_forwardMapping<float, WrapModes::GetClamped>(img);
-			tmpEnergy = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(tmpEnergy);
+			density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
+			momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto img_b = img.clone();
+			auto img_b = density.clone();
 			img_b = gaussianBlur<float, WrapModes::GetClamped>(img_b, 3 * 2 + 1);
 			auto& guidance = img_b;
-			forxy(tmpEnergy)
+			forxy(momentum)
 			{
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
 				if (img_b(p) < mConfig.surfTensionThres)
 				{
-					// todo: move the  "* img(p)" back outside the if.
+					// todo: move the  "* density(p)" back outside the if.
 					// todo: readd the safeNormalized()
-					//g = safeNormalized(g) * surfTension * img(p);
-					g = g * mConfig.surfTension * img(p);
+					//g = safeNormalized(g) * surfTension * density(p);
+					g = g * mConfig.surfTension * density(p);
 				}
 				else
 				{
 					g *= -mConfig.incompressibilityCoef;
 				}
 
-				tmpEnergy(p) += g;
+				momentum(p) += g;
 			}
 
-			auto offsets = empty_like(tmpEnergy);
+			auto offsets = empty_like(momentum);
 			forxy(offsets) {
-				offsets(p) = tmpEnergy(p) / img(p);
+				offsets(p) = momentum(p) / density(p);
 			}
 			advect(*material, offsets);
 		}
 	}
 	void advect(Material& material, Array2D<vec2> offsets) {
-		auto& img = material.img;
-		auto& tmpEnergy = material.tmpEnergy;
+		auto& density = material.density;
+		auto& momentum = material.momentum;
 
 		auto img3 = Array2D<float>(sx, sy);
-		auto tmpEnergy3 = Array2D<vec2>(sx, sy, vec2());
+		auto momentum3 = Array2D<vec2>(sx, sy, vec2());
 		int count = 0;
 		float sumOffsetY = 0; float div = 0;
-		forxy(img)
+		forxy(density)
 		{
-			if (img(p) == 0.0f)
+			if (density(p) == 0.0f)
 				continue;
 
 			vec2 offset = offsets(p);
 			sumOffsetY += abs(offset.y); div++;
 			vec2 dst = vec2(p) + offset;
 
-			vec2 newEnergy = tmpEnergy(p);
+			vec2 newEnergy = momentum(p);
 			bool bounced = false;
 			for (int dim = 0; dim <= 1; dim++) {
 				float maxVal = sz[dim] - 1;
@@ -265,13 +259,13 @@ struct StefanFluidSketch1 {
 				count++;
 			//if(bounced)
 			//	aaPoint<float, WrapModes::NoWrap>(bounces_dbg, dst, 1);
-			aaPoint<float, WrapModes::GetClamped>(img3, dst, img(p));
-			aaPoint<vec2, WrapModes::GetClamped>(tmpEnergy3, dst, newEnergy);
+			aaPoint<float, WrapModes::GetClamped>(img3, dst, density(p));
+			aaPoint<vec2, WrapModes::GetClamped>(momentum3, dst, newEnergy);
 		}
 		//cout << "bugged=" << count << endl;
 		//cout << "sumOffsetY=" << sumOffsetY/div << endl;
-		img = img3;
-		tmpEnergy = tmpEnergy3;
+		density = img3;
+		momentum = momentum3;
 	}
 	template<class T, class FetchFunc>
 	static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
