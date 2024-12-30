@@ -11,6 +11,7 @@ struct StefanFluidSketch1 {
 		float surfTension = 1.0f;
 		float gravity = .1f;
 		float incompressibilityCoef = 1.0f;
+		float intermaterialRepelCoef = .5f;
 
 		void update() {
 			ImGui::Begin("Config");
@@ -18,6 +19,7 @@ struct StefanFluidSketch1 {
 			ImGui::DragFloat("surfTension", &surfTension, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::DragFloat("gravity", &gravity, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::DragFloat("incompressibilityCoef", &incompressibilityCoef, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat("intermaterialRepelCoef", &intermaterialRepelCoef, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::End();
 
 		}
@@ -195,7 +197,7 @@ struct StefanFluidSketch1 {
 		{
 			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
 			
-			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p);
+			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p) * mConfig.intermaterialRepelCoef;
 		}
 
 		/*auto offsets = empty_like(momentum);
