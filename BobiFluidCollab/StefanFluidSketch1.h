@@ -41,11 +41,13 @@ struct StefanFluidSketch1 {
 		}
 		Array2D<float> density;
 		Array2D<vec2> momentum;
+		vec3 color;
 	};
 	Material mRedMaterial, mGreenMaterial;
 	vector<Material*> materials{ &mRedMaterial, &mGreenMaterial };
 
 	bool pause = false;
+	bool manipulateGreen = false;
 
 	Array2D<float> bounces_dbg;
 
@@ -57,7 +59,9 @@ struct StefanFluidSketch1 {
 		sz = ivec2(sx, sy);
 
 		mRedMaterial = Material(sz);
+		mRedMaterial.color = vec3(1.0f, 0.2f, 0.1f);
 		mGreenMaterial = Material(sz);
+		mGreenMaterial.color = vec3(0.2f, 1.0f, 0.1f);
 		materials = { &mRedMaterial, &mGreenMaterial };
 	}
 	void setup()
@@ -74,6 +78,10 @@ struct StefanFluidSketch1 {
 		if (e.code == sf::Keyboard::Key::P)
 		{
 			pause = !pause;
+		}
+		if (e.code == sf::Keyboard::Key::G)
+		{
+			this->manipulateGreen = !this->manipulateGreen;
 		}
 	}
 	void operator()(const sf::Event::MouseButtonPressed& e) {
@@ -121,10 +129,14 @@ struct StefanFluidSketch1 {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
 		forxy(mRedMaterial.density) {
-			float Lfloat = mRedMaterial.density(p);
-			Lfloat /= Lfloat + 1.0f;
-			unsigned char L = 255 - Lfloat * 255;
-			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
+			vec3 totalColor = vec3(1.0f, 1.0f, 1.0f);
+			for (Material* material : materials) {
+				totalColor *= glm::pow(material->color, vec3(1.0f / material->density(p)));
+			}
+			//totalColor /= totalColor + vec3(1.0f);
+			totalColor *= 255.0f;
+			auto totalColorByte = glm::tvec3<byte>(totalColor);
+			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(totalColorByte.x, totalColorByte.y, totalColorByte.z));
 		}
 
 		sf::Texture tex(sf::Vector2u(sx, sy));
@@ -147,7 +159,7 @@ struct StefanFluidSketch1 {
 
 		} // if ! pause
 		//auto material = keys['g'] ? &green : &red;
-		auto material = &mRedMaterial;
+		auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
 		int r = 80 / mScale;
@@ -175,10 +187,15 @@ struct StefanFluidSketch1 {
 		}
 	}
 
+	/*void repel(Material& affectedMaterial, Material& actingMaterial) {
+		auto 
+		forxy(affectedMaterial)
+	}*/
+
 	void doFluidStep() {
 		//for (int i = 0; i < 4; i++) {
-			//repel(mRedMaterial, ::green);
-			//repel(::green, mRedMaterial);
+		//	repel(mRedMaterial, mGreenMaterial);
+		//	repel(mGreenMaterial, mRedMaterial);
 		//}
 
 		for (auto material : materials) {
