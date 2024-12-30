@@ -71,6 +71,22 @@ static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
 }
 
 struct ThisApp {
+	struct Config {
+		float surfTensionThres = 0.04f;
+		float surfTension = 1.0f;
+		float gravity = .1f;
+		float incompressibilityCoef = 1.0f;
+		void update() {
+			ImGui::Begin("Config");
+			ImGui::DragFloat("surfTensionThres", &surfTensionThres, 1.0f, 0.1f, 50.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat("surfTension", &surfTension, 1.0f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat("gravity", &gravity, 1.0f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat("incompressibilityCoef", &incompressibilityCoef, 1.0f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::End();
+
+		}
+	} mConfig;
+
 	sf::RenderWindow& mWindow;
 	bool mLeftMouseButtonHeld = false;
 	bool mRightMouseButtonHeld = false;
@@ -167,6 +183,8 @@ struct ThisApp {
 	}
 	void update()
 	{
+		mConfig.update();
+
 		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
 		{
@@ -218,29 +236,6 @@ struct ThisApp {
 	}
 
 	void doFluidStep() {
-		ImGui::Begin("Hello, world!");
-		ImGui::Button("Look at this pretty button");
-		ImGui::End();
-
-
-		/*surfTensionThres = cfg1::getOpt("surfTensionThres", .04f,
-			[&]() { return keys['6']; },
-			[&]() { return expRange(mouseY, 0.1f, 50000.0f); });
-		auto surfTension = cfg1::getOpt("surfTension", 1.0f,
-			[&]() { return keys['7']; },
-			[&]() { return expRange(mouseY, .0001f, 40000.0f); });
-		auto gravity = cfg1::getOpt("gravity", .1f,//0.0f,//.1f,
-			[&]() { return keys['8']; },
-			[&]() { return expRange(mouseY, .0001f, 40000.0f); });
-		auto incompressibilityCoef = cfg1::getOpt("incompressibilityCoef", 1.0f,
-			[&]() { return keys['/']; },
-			[&]() { return expRange(mouseY, .0001f, 40000.0f); });*/
-		surfTensionThres = 0.04f;
-		auto surfTension = 1.0f;
-		auto gravity = .1f;
-		auto incompressibilityCoef = 1.0f;
-
-
 		//for (int i = 0; i < 4; i++) {
 			//repel(::red, ::green);
 			//repel(::green, ::red);
@@ -252,7 +247,7 @@ struct ThisApp {
 
 			forxy(tmpEnergy)
 			{
-				tmpEnergy(p) += vec2(0.0f, gravity) * img(p);
+				tmpEnergy(p) += vec2(0.0f, mConfig.gravity) * img(p);
 			}
 
 			img = gauss3_forwardMapping<float, WrapModes::GetClamped>(img);
@@ -270,11 +265,11 @@ struct ThisApp {
 					// todo: move the  "* img(p)" back outside the if.
 					// todo: readd the safeNormalized()
 					//g = safeNormalized(g) * surfTension * img(p);
-					g = g * surfTension * img(p);
+					g = g * mConfig.surfTension * img(p);
 				}
 				else
 				{
-					g *= -incompressibilityCoef;
+					g *= -mConfig.incompressibilityCoef;
 				}
 
 				tmpEnergy(p) += g;
