@@ -4,6 +4,31 @@
 #include <imgui.h>
 #include <imgui-SFML.h>
 
+static bool isMouseEvent(const sf::Event& eve)
+{
+	if (eve.is<sf::Event::MouseButtonPressed>())
+		return true;
+	if (eve.is<sf::Event::MouseButtonReleased>())
+		return true;
+	if (eve.is<sf::Event::MouseMoved>())
+		return true;
+	if (eve.is<sf::Event::MouseButtonPressed>())
+		return true;
+	return false;
+}
+
+static bool isKeyboardEvent(const sf::Event& eve)
+{
+	if (eve.is<sf::Event::TextEntered>())
+		return true;
+	if (eve.is<sf::Event::KeyPressed>())
+		return true;
+	if (eve.is<sf::Event::KeyReleased>())
+		return true;
+	
+	return false;
+}
+
 void disableGLReadClamp() {
 	//glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE);
 }
@@ -47,6 +72,8 @@ static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
 
 struct ThisApp {
 	sf::RenderWindow& mWindow;
+	bool mLeftMouseButtonHeld = false;
+	bool mRightMouseButtonHeld = false;
 
 	ThisApp(sf::RenderWindow* window) : mWindow(*window) {
 	}
@@ -55,7 +82,7 @@ struct ThisApp {
 		disableGLReadClamp();
 		reset();
 	}
-	std::optional<std::string> operator()(const sf::Event::KeyPressed& keyPress)
+	void operator()(const sf::Event::KeyPressed& keyPress)
 	{
 		// When the enter key is pressed, switch to the next handler type
 		if (keyPress.code == sf::Keyboard::Key::R)
@@ -67,10 +94,10 @@ struct ThisApp {
 			pause = !pause;
 		}
 		
-		return "";
+		
 	}
 
-	std::optional<std::string> operator()(const sf::Event::MouseMoved& mouseMoved)
+	void operator()(const sf::Event::MouseMoved& mouseMoved)
 	{
 		ivec2 newPos(mouseMoved.position.x, mouseMoved.position.y);
 
@@ -82,13 +109,18 @@ struct ThisApp {
 		direction = vec2(newPos) - lastm;
 		lastm = newPos;
 		
-		return "";
+		
+	}
+	void operator()(const sf::Event::Closed& closed)
+	{
+		mWindow.close();
+
+		
 	}
 	template <typename T>
-	std::optional<std::string> operator()(const T&)
+	void operator()(const T&)
 	{
 		// All unhandled events will end up here
-		return std::nullopt;
 	}
 	void reset() {
 		for (Material* material : materials) {
@@ -176,6 +208,11 @@ struct ThisApp {
 	}
 
 	void doFluidStep() {
+		ImGui::Begin("Hello, world!");
+		ImGui::Button("Look at this pretty button");
+		ImGui::End();
+
+
 		/*surfTensionThres = cfg1::getOpt("surfTensionThres", .04f,
 			[&]() { return keys['6']; },
 			[&]() { return expRange(mouseY, 0.1f, 50000.0f); });
@@ -304,24 +341,27 @@ int main()
 	ThisApp app(&window);
 	app.setup();
 	sf::Clock deltaClock;
+	ImGuiIO& io = ImGui::GetIO();
 	while (window.isOpen())
     {
 		ImGui::SFML::Update(window, deltaClock.restart());
 
-		ImGui::Begin("Hello, world!");
-		ImGui::Button("Look at this pretty button");
-		ImGui::End();
-
 		app.update();
-		
 		app.draw();
 
         while (const std::optional event = window.pollEvent())
         {
 			ImGui::SFML::ProcessEvent(window, *event);
-			
-            if (event->is<sf::Event::Closed>())
-                window.close();
+			if (ImGui::GetIO().WantCaptureMouse && isMouseEvent(*event))
+			{
+				//if(event->is<sf::Event::MouseButtonPressed
+				//cout << "capturing mouse" << endl;
+				continue;
+			}
+
+			if (ImGui::GetIO().WantTextInput && isKeyboardEvent(*event))
+				continue;
+
 			event->visit(app);
         }
     }
