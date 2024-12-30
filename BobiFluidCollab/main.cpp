@@ -46,6 +46,10 @@ static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
 }
 
 struct ThisApp {
+	sf::RenderWindow& mWindow;
+
+	ThisApp(sf::RenderWindow* window) : mWindow(*window) {
+	}
 	void setup()
 	{
 		disableGLReadClamp();
@@ -100,7 +104,25 @@ struct ThisApp {
 	}
 	vec2 direction;
 	vec2 lastm;
+	void draw() {
+		mWindow.clear(sf::Color::Black);
+		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
+		forxy(::red.img) {
+			float Lfloat = ::red.img(p);
+			Lfloat /= Lfloat + 1.0f;
+			unsigned char L = Lfloat * 255;
+			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
+		}
 
+		sf::Texture tex(sf::Vector2u(sx, sy));
+		tex.update(toUpload);
+		sf::Sprite sprite(tex);
+		sprite.setScale(sf::Vector2f(::scale, ::scale));
+		mWindow.draw(sprite);
+		ImGui::SFML::Render(mWindow);
+		//app.draw();
+		mWindow.display();
+	}
 	void update()
 	{
 		bounces_dbg = Array2D<float>(sx, sy, 0);
@@ -195,16 +217,6 @@ struct ThisApp {
 			auto& guidance = img_b;
 			forxy(tmpEnergy)
 			{
-				/*if (p.x == tmpEnergy.w - 1)
-					continue;
-				if (p.y == tmpEnergy.h-1)
-					continue;
-				if (p.x == 0)
-					continue;
-				if (p.y == 0)
-					continue;*/
-
-					//auto g = gradient_i<float, WrapModes::NoWrap>(guidance, p);
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
 				if (img_b(p) < surfTensionThres)
 				{
@@ -289,7 +301,7 @@ int main()
 		return -1;
 	}
 
-	ThisApp app;
+	ThisApp app(&window);
 	app.setup();
 	sf::Clock deltaClock;
 	while (window.isOpen())
@@ -302,23 +314,7 @@ int main()
 
 		app.update();
 		
-		window.clear(sf::Color::Black);
-		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
-		forxy(::red.img) {
-			float Lfloat = ::red.img(p);
-			Lfloat /= Lfloat + 1.0f;
-			unsigned char L = Lfloat*255;
-			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(L, L, L));
-		}
-
-		sf::Texture tex(sf::Vector2u(sx, sy));
-		tex.update(toUpload);
-		sf::Sprite sprite(tex);
-		sprite.setScale(sf::Vector2f(::scale, ::scale));
-		window.draw(sprite);
-		ImGui::SFML::Render(window);
-		window.display();
-		//app.draw();
+		app.draw();
 
         while (const std::optional event = window.pollEvent())
         {
@@ -329,4 +325,5 @@ int main()
 			event->visit(app);
         }
     }
+	ImGui::SFML::Shutdown();
 }
