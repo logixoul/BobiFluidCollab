@@ -61,9 +61,9 @@ struct StefanFluidSketch1 {
 		sz = ivec2(sx, sy);
 
 		mRedMaterial = Material(sz);
-		mRedMaterial.color = vec3(1.0f, 0.7f, 0.4f);
+		mRedMaterial.color = vec3(1.1f, 0.4f, 0.4f);
 		mGreenMaterial = Material(sz);
-		mGreenMaterial.color = vec3(0.7f, 1.0f, 0.4f);
+		mGreenMaterial.color = vec3(0.4f, 1.1f, 0.4f);
 		materials = { &mRedMaterial, &mGreenMaterial };
 	}
 	void setup()
@@ -131,11 +131,13 @@ struct StefanFluidSketch1 {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
 		forxy(mRedMaterial.density) {
-			vec3 totalColor = vec3(1.0f, 1.0f, 1.0f);
+			vec3 totalColor = vec3(0.0f, 0.0f, 0.0f);
 			for (Material* material : materials) {
-				totalColor *= glm::pow(material->color, vec3(0.1f*material->density(p)));
+				totalColor += glm::pow(material->color, vec3(1.0f*material->density(p)));
 			}
+			totalColor = vec3(1.0f) - vec3(1.0f, 1.0f, 1.0f) / totalColor;
 			//totalColor /= totalColor + vec3(1.0f);
+			totalColor = glm::max(glm::min(totalColor, vec3(1.0f)), vec3(0.0f));
 			totalColor *= 255.0f;
 			auto totalColorByte = glm::tvec3<byte>(totalColor);
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(totalColorByte.x, totalColorByte.y, totalColorByte.z));
@@ -190,28 +192,18 @@ struct StefanFluidSketch1 {
 	}
 
 	void repel(Material& affectedMaterial, Material& actingMaterial) {
-		auto img_b = actingMaterial.density.clone();
-		img_b = gaussianBlur<float, WrapModes::GetClamped>(img_b, 3 * 2 + 1);
-		auto& guidance = img_b;
+		auto guidance = gaussianBlur<float, WrapModes::GetClamped>(actingMaterial.density, 3 * 2 + 1);
 		forxy(affectedMaterial.momentum)
 		{
 			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
 			
 			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p) * mConfig.intermaterialRepelCoef;
 		}
-
-		/*auto offsets = empty_like(momentum);
-		forxy(offsets) {
-			offsets(p) = momentum(p) / density(p);
-		}
-		advect(*material, offsets);*/
 	}
 
 	void doFluidStep() {
-		//for (int i = 0; i < 4; i++) {
-			repel(mRedMaterial, mGreenMaterial);
-			repel(mGreenMaterial, mRedMaterial);
-		//}
+		repel(mRedMaterial, mGreenMaterial);
+		repel(mGreenMaterial, mRedMaterial);
 
 		for (auto material : materials) {
 			auto& momentum = material->momentum;
@@ -225,13 +217,11 @@ struct StefanFluidSketch1 {
 			density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
 			momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto img_b = density.clone();
-			img_b = gaussianBlur<float, WrapModes::GetClamped>(img_b, 3 * 2 + 1);
-			auto& guidance = img_b;
+			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 3 * 2 + 1);
 			forxy(momentum)
 			{
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
-				if (img_b(p) < mConfig.surfTensionThres)
+				if (guidance(p) < mConfig.surfTensionThres)
 				{
 					// todo: move the  "* density(p)" back outside the if.
 					// todo: readd the safeNormalized()
