@@ -28,14 +28,15 @@ void rotate(vec2 & p, float angle)
 
 void trapFP()
 {
-	 // Get the default control word.
-   int cw = _controlfp_s(NULL, 0,0 );
+/*	 // Get the default control word.
+   int cw; = _controlfp_s(NULL, 0,0 );
 
    // Set the exception masks OFF, turn exceptions on.
-   cw &=~(EM_OVERFLOW|EM_UNDERFLOW|/*EM_INEXACT|*/EM_ZERODIVIDE|EM_DENORMAL);
+   cw &=~(EM_OVERFLOW|EM_UNDERFLOW|/*EM_INEXACT| EM_ZERODIVIDE|EM_DENORMAL);
 
    // Set the control word.
    _controlfp_s(NULL, cw, MCW_EM );
+*/
 }
 
 float randFloat()

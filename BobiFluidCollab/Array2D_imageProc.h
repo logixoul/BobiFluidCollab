@@ -30,6 +30,32 @@ T& getWrapped(Array2D<T>& src, int x, int y)
 {
 	return getWrapped(src, ivec2(x, y));
 }
+template<class T>
+T& zero() {
+	static T val = T()*0.0f;
+	val = T()*0.0f;
+	return val;
+}
+template<class T>
+T& get_wrapZeros(Array2D<T>& src, int x, int y)
+{
+	if (x < 0 || y < 0 || x >= src.w || y >= src.h)
+	{
+		return ::zero<T>();
+	}
+	return src(x, y);
+}
+ivec2 clampPoint(ivec2 p, int w, int h);
+template<class T>
+T const& get_clamped(Array2D<T> const& src, int x, int y)
+{
+	return src(clampPoint(ivec2(x, y), src.w, src.h));
+}
+template<class T>
+T& get_clamped(Array2D<T>& src, int x, int y)
+{
+	return src(clampPoint(ivec2(x, y), src.w, src.h));
+}
 struct WrapModes {
 	struct GetWrapped {
 		template<class T>
@@ -135,24 +161,6 @@ T getBilinear(Array2D<T> src, vec2 p)
 
 Array2D<float> to01(Array2D<float> a);
 Array2D<vec3> to01(Array2D<vec3> a, float min, float max);
-template<class T>
-T& zero() {
-	static T val = T()*0.0f;
-	val = T()*0.0f;
-	return val;
-}
-
-ivec2 clampPoint(ivec2 p, int w, int h);
-template<class T>
-T& get_clamped(Array2D<T>& src, int x, int y)
-{
-	return src(clampPoint(ivec2(x, y), src.w, src.h));
-}
-template<class T>
-T const& get_clamped(Array2D<T> const& src, int x, int y)
-{
-	return src(clampPoint(ivec2(x, y), src.w, src.h));
-}
 
 template<class T>
 Array2D<T> gauss3(Array2D<T> src) {
@@ -166,15 +174,6 @@ Array2D<T> gauss3(Array2D<T> src) {
 	return dst2;
 }
 
-template<class T>
-T& get_wrapZeros(Array2D<T>& src, int x, int y)
-{
-	if (x < 0 || y < 0 || x >= src.w || y >= src.h)
-	{
-		return ::zero<T>();
-	}
-	return src(x, y);
-}
 template<class T>
 T const& get_wrapZeros(Array2D<T> const& src, int x, int y)
 {

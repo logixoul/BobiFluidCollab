@@ -139,7 +139,7 @@ struct StefanFluidSketch1 {
 			//totalColor /= totalColor + vec3(1.0f);
 			totalColor = glm::max(glm::min(totalColor, vec3(1.0f)), vec3(0.0f));
 			totalColor *= 255.0f;
-			auto totalColorByte = glm::tvec3<byte>(totalColor);
+			auto totalColorByte = glm::tvec3<unsigned char>(totalColor);
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(totalColorByte.x, totalColorByte.y, totalColorByte.z));
 		}
 
