@@ -36,7 +36,8 @@ struct Sketch {
 	sf::RenderWindow& mWindow;
 	bool mLeftMouseButtonHeld = false;
 	bool mRightMouseButtonHeld = false;
-	float mouseX, mouseY;
+	vec2 mousePos;
+	vec2 prevMousePos;
 
 	const int mScale = 5;
 	int sx;
@@ -110,13 +111,8 @@ struct Sketch {
 	{
 		ivec2 newPos(e.position.x, e.position.y);
 
-
-		mouseX = newPos.x / (float)mWindow.getSize().x;
-		mouseY = newPos.y / (float)mWindow.getSize().y;
-
-
-		direction = vec2(newPos) - lastm;
-		lastm = newPos;
+		prevMousePos = mousePos;
+		mousePos = newPos;
 	}
 	void operator()(const sf::Event::Closed& e)
 	{
@@ -133,8 +129,6 @@ struct Sketch {
 			std::fill(material->momentum.begin(), material->momentum.end(), vec2());
 		}
 	}
-	vec2 direction;
-	vec2 lastm;
 	void draw() {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
@@ -189,12 +183,14 @@ struct Sketch {
 				doFluidStep();
 
 		} // if ! pause
-		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
+		ivec2 scaledm = ivec2(vec2(mousePos) / float(mScale));
+		ivec2 prevScaledm = ivec2(vec2(prevMousePos) / float(mScale));
 		auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
 			float value = mLeftMouseButtonHeld ? 1.0 : 0.0;
-			paintBlot(material->density, scaledm, value);
+			for(float f = 0; f <= 1.0; f += .1f)
+				paintBlot(material->density, glm::mix(prevScaledm, scaledm, f), value);
 		}
 	}
 
