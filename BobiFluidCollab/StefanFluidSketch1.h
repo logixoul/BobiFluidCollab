@@ -192,11 +192,25 @@ struct StefanFluidSketch1 {
 		}
 	}
 
+	/*template<class T, class FetchFunc>
+	static void convolve(Array2D<T> in, Array2D<float> kernel) {
+		auto out = ::empty_like(in);
+		auto kernelSum = ::accumulate(out.data, out.data + out.w * out.h, 0.0f);
+		forxy(out) {
+			for (int kx = 0; ky < kernel.w; kx++) {
+				for (int ky = 0; ky < kernel.h; ky++) {
+					sum;
+				}
+			}
+		}
+	}*/
+
 	void repel(Material& affectedMaterial, Material& actingMaterial) {
 		auto guidance = gaussianBlur<float, WrapModes::GetClamped>(actingMaterial.density, 3 * 2 + 1);
 		forxy(affectedMaterial.momentum)
 		{
 			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
+			//if(length(g) != 0.0f) g = glm::normalize(g);
 			
 			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p) * mConfig.intermaterialRepelCoef;
 		}
@@ -248,8 +262,8 @@ struct StefanFluidSketch1 {
 		auto& density = material.density;
 		auto& momentum = material.momentum;
 
-		auto img3 = Array2D<float>(sx, sy);
-		auto momentum3 = Array2D<vec2>(sx, sy, vec2());
+		auto density2 = Array2D<float>(sx, sy);
+		auto momentum2 = Array2D<vec2>(sx, sy, vec2());
 		int count = 0;
 		float sumOffsetY = 0; float div = 0;
 		forxy(density)
@@ -282,13 +296,13 @@ struct StefanFluidSketch1 {
 				count++;
 			//if(bounced)
 			//	aaPoint<float, WrapModes::NoWrap>(bounces_dbg, dst, 1);
-			aaPoint<float, WrapModes::GetClamped>(img3, dst, density(p));
-			aaPoint<vec2, WrapModes::GetClamped>(momentum3, dst, newEnergy);
+			aaPoint<float, WrapModes::GetClamped>(density2, dst, density(p));
+			aaPoint<vec2, WrapModes::GetClamped>(momentum2, dst, newEnergy);
 		}
 		//cout << "bugged=" << count << endl;
 		//cout << "sumOffsetY=" << sumOffsetY/div << endl;
-		density = img3;
-		momentum = momentum3;
+		density = density2;
+		momentum = momentum2;
 	}
 	template<class T, class FetchFunc>
 	static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
