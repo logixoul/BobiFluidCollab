@@ -20,8 +20,8 @@ Array2D<T> get_divergence(Array2D<vec2>& src) {
 struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
-		float surfTension = 12.0f;
-		float incompressibilityCoef = 2.7f;
+		float surfTension = 6.3f;
+		float incompressibilityCoef = 2.4f;
 		float intermaterialRepelCoef = .5f;
 
 		void update() {
@@ -160,6 +160,24 @@ struct Sketch {
 		ImGui::SFML::Render(mWindow);
 		mWindow.display();
 	}
+	void paintBlot(Array2D<float> dest, ivec2 center, float value) {
+		int r = 30 / mScale;
+		ivec2 areaTopLeft = center - ivec2(r, r);
+		ivec2 areaBottomRight = center + ivec2(r, r);
+
+		for (int x = areaTopLeft.x; x <= areaBottomRight.x; x++)
+		{
+			for (int y = areaTopLeft.y; y <= areaBottomRight.y; y++)
+			{
+				vec2 v = vec2(x, y) - vec2(center);
+				float w = std::max(0.0f, 1.0f - length(v) / r);
+				w = std::min(w, 1.0f);
+				w = 3 * w * w - 2 * w * w * w;
+
+				dest.wr(x, y) = mix(dest.wr(x, y), value, w);
+			}
+		}
+	}
 	void update()
 	{
 		mConfig.update();
@@ -172,31 +190,11 @@ struct Sketch {
 
 		} // if ! pause
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
-		int r = 30 / mScale;
-		ivec2 areaTopLeft = scaledm - ivec2(r, r);
-		ivec2 areaBottomRight = scaledm + ivec2(r, r);
+		auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
-			for (int x = areaTopLeft.x; x <= areaBottomRight.x; x++)
-			{
-				for (int y = areaTopLeft.y; y <= areaBottomRight.y; y++)
-				{
-					vec2 v = vec2(x, y) - vec2(scaledm);
-					float w = std::max(0.0f, 1.0f - length(v) / r);
-					w = std::min(w, 1.0f);
-					w = 3 * w * w - 2 * w * w * w;
-
-					auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
-					if (mLeftMouseButtonHeld) {
-
-						//material->density.wr(x, y) += 1.f * w * 10.0;
-						material->density.wr(x, y) = mix(material->density.wr(x, y), 1.0f, w);
-					}
-					else if (mRightMouseButtonHeld) {
-						material->density.wr(x, y) = mix(material->density.wr(x, y), 0.0f, w);
-					}
-				}
-			}
+			float value = mLeftMouseButtonHeld ? 1.0 : 0.0;
+			paintBlot(material->density, scaledm, value);
 		}
 	}
 
@@ -259,7 +257,7 @@ struct Sketch {
 			density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 3 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 1 * 2 + 1);
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
 			//auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
 			//auto guidance = steepConvolve(density);
