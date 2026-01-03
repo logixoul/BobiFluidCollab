@@ -20,8 +20,8 @@ Array2D<T> get_divergence(Array2D<vec2>& src) {
 struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
-		float surfTension = 33.0f;
-		float incompressibilityCoef = 16.0f;
+		float surfTension = 12.0f;
+		float incompressibilityCoef = 0.7f;
 		float intermaterialRepelCoef = .5f;
 
 		void update() {
@@ -261,14 +261,24 @@ struct Sketch {
 
 			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 5 * 2 + 1);
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
-			auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
+			//auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
 			//auto guidance = steepConvolve(density);
 			forxy(momentum)
 			{
 				auto g = grads(p);
-				auto pushForce = (guidance(p) - mConfig.surfTensionThres) / mConfig.surfTensionThres;
+				//if (g == vec2(0.0f, 0.0f))
+//					continue;
+				auto here = guidance(p);
+				/*auto gn = normalize(g);
+				auto prev = getBilinear(guidance, vec2(p) - gn);
+				auto next = getBilinear(guidance, vec2(p) + gn);
+				auto secondPartialDerivative = here - (prev + next) * .5f;*/
+				auto pushForce = (here - mConfig.surfTensionThres);
 				if (pushForce < 0)
 				{
+					//float len = length(g);
+					//g /= len * len;
+					g /= here;
 					g *= mConfig.surfTension;
 				}
 				else
