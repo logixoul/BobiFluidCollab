@@ -12,6 +12,7 @@ struct StefanFluidSketch1 {
 		float gravity = .1f;
 		float incompressibilityCoef = 1.0f;
 		float intermaterialRepelCoef = .5f;
+		float kernelSteepness = 2.0f;
 
 		void update() {
 			ImGui::Begin("Config");
@@ -20,8 +21,8 @@ struct StefanFluidSketch1 {
 			ImGui::DragFloat("gravity", &gravity, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::DragFloat("incompressibilityCoef", &incompressibilityCoef, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::DragFloat("intermaterialRepelCoef", &intermaterialRepelCoef, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat("kernelSteepness", &kernelSteepness, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::End();
-
 		}
 	} mConfig;
 
@@ -155,7 +156,7 @@ struct StefanFluidSketch1 {
 	void update()
 	{
 		mConfig.update();
-
+	
 		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
 		{
@@ -192,21 +193,40 @@ struct StefanFluidSketch1 {
 		}
 	}
 
-	/*template<class T, class FetchFunc>
-	static void convolve(Array2D<T> in, Array2D<float> kernel) {
+	template<class T, class FetchFunc>
+	static Array2D<T> convolve(Array2D<T> in, Array2D<float> kernel) {
+		int r = kernel.w / 2;
 		auto out = ::empty_like(in);
-		auto kernelSum = ::accumulate(out.data, out.data + out.w * out.h, 0.0f);
 		forxy(out) {
-			for (int kx = 0; ky < kernel.w; kx++) {
-				for (int ky = 0; ky < kernel.h; ky++) {
-					sum;
+			float sum = 0.0f;
+			for (int kx = -r; kx < r; kx++) {
+				for (int ky = -r; ky < r; ky++) {
+					sum += kernel(kx + r, ky + r) * FetchFunc::template fetch<T>(in, p.x + kx, p.y + ky);
 				}
 			}
+			out(p) = sum;
 		}
-	}*/
+		return out;
+	}
 
 	void repel(Material& affectedMaterial, Material& actingMaterial) {
-		auto guidance = gaussianBlur<float, WrapModes::GetClamped>(actingMaterial.density, 3 * 2 + 1);
+		Array2D<float> kernel(7, 7);
+		ivec2 center = kernel.Size() / 2;
+		int r = kernel.w / 2;
+		forxy(kernel) {
+			ivec2 p2 = p - center;
+			vec2 p2f = vec2(p2);
+			float distance = length(p2f);
+			//if (distance == 0)
+			//	distance = .1;
+			kernel(p) = pow(1 - distance / r, 2.0f);
+		}
+		auto kernelSum = ::accumulate(kernel.begin(), kernel.end(), 0.0f);
+		forxy(kernel) {
+			kernel(p) /= kernelSum;
+		}
+		auto guidance = convolve<float, WrapModes::GetClamped>(actingMaterial.density, kernel);
+		//auto guidance = gaussianBlur<float, WrapModes::GetClamped>(actingMaterial.density, 3 * 2 + 1);
 		forxy(affectedMaterial.momentum)
 		{
 			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
@@ -256,6 +276,7 @@ struct StefanFluidSketch1 {
 				offsets(p) = momentum(p) / density(p);
 			}
 			advect(*material, offsets);
+			
 		}
 	}
 	void advect(Material& material, Array2D<vec2> offsets) {
