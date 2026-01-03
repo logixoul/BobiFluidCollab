@@ -259,7 +259,7 @@ struct Sketch {
 			density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 5 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 3 * 2 + 1);
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
 			//auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
 			//auto guidance = steepConvolve(density);
