@@ -8,7 +8,7 @@
 struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
-		float surfTension = 114.0f;
+		float surfTension = 91.0f;
 		float gravity = .1f;
 		float incompressibilityCoef = 1.0f;
 		float intermaterialRepelCoef = .5f;
@@ -245,17 +245,11 @@ struct Sketch {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
-			forxy(momentum)
-			{
-				//momentum(p) += vec2(0.0f, mConfig.gravity) * density(p);
-			}
-
-			density = steepConvolve(density);
-			//density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
+			density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 9 * 2 + 1);
-			//auto guidance = density.clone();
+			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 7 * 2 + 1);
+			//auto guidance = steepConvolve(density);
 			forxy(momentum)
 			{
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
