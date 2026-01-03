@@ -8,7 +8,7 @@
 struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
-		float surfTension = 1.0f;
+		float surfTension = 114.0f;
 		float gravity = .1f;
 		float incompressibilityCoef = 1.0f;
 		float intermaterialRepelCoef = .5f;
@@ -17,11 +17,8 @@ struct Sketch {
 		void update() {
 			ImGui::Begin("Config");
 			ImGui::DragFloat("surfTensionThres", &surfTensionThres, 0.1f, 0.1f, 50.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::DragFloat("surfTension", &surfTension, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::DragFloat("gravity", &gravity, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::DragFloat("surfTension", &surfTension, 0.1f, .0001f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::DragFloat("incompressibilityCoef", &incompressibilityCoef, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::DragFloat("intermaterialRepelCoef", &intermaterialRepelCoef, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::DragFloat("kernelSteepness", &kernelSteepness, 0.1f, .0001f, 40.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::End();
 		}
 	} mConfig;
@@ -164,7 +161,7 @@ struct Sketch {
 
 		} // if ! pause
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
-		int r = 80 / mScale;
+		int r = 30 / mScale;
 		ivec2 areaTopLeft = scaledm - ivec2(r, r);
 		ivec2 areaBottomRight = scaledm + ivec2(r, r);
 
@@ -178,17 +175,14 @@ struct Sketch {
 					w = std::min(w, 1.0f);
 					w = 3 * w * w - 2 * w * w * w;
 
+					auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 					if (mLeftMouseButtonHeld) {
-						auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 
 						//material->density.wr(x, y) += 1.f * w * 10.0;
 						material->density.wr(x, y) = mix(material->density.wr(x, y), 1.0f, w);
 					}
 					else if (mRightMouseButtonHeld) {
-						for (Material* material : materials) {
-							if (material->density.wr(x, y) != 0.0f)
-								material->momentum.wr(x, y) += w * material->density.wr(x, y) * 0.5f * direction / (float)mScale;
-						}
+						material->density.wr(x, y) = mix(material->density.wr(x, y), 0.0f, w);
 					}
 				}
 			}
@@ -211,7 +205,7 @@ struct Sketch {
 		return out;
 	}
 
-	void repel(Material& affectedMaterial, Material& actingMaterial) {
+	Array2D<float> steepConvolve(Array2D<float> in) {
 		Array2D<float> kernel(7, 7);
 		ivec2 center = kernel.Size() / 2;
 		int r = kernel.w / 2;
@@ -219,6 +213,7 @@ struct Sketch {
 			ivec2 p2 = p - center;
 			vec2 p2f = vec2(p2);
 			float distance = length(p2f);
+			distance = std::min<float>(distance, r);
 			//if (distance == 0)
 			//	distance = .1;
 			kernel(p) = pow(1 - distance / r, 2.0f);
@@ -227,7 +222,11 @@ struct Sketch {
 		forxy(kernel) {
 			kernel(p) /= kernelSum;
 		}
-		auto guidance = convolve<float, WrapModes::GetClamped>(actingMaterial.density, kernel);
+		return convolve<float, WrapModes::GetClamped>(in, kernel);
+	}
+
+	void repel(Material& affectedMaterial, Material& actingMaterial) {
+		auto guidance = steepConvolve(actingMaterial.density);
 		//auto guidance = gaussianBlur<float, WrapModes::GetClamped>(actingMaterial.density, 3 * 2 + 1);
 		forxy(affectedMaterial.momentum)
 		{
@@ -251,7 +250,8 @@ struct Sketch {
 				//momentum(p) += vec2(0.0f, mConfig.gravity) * density(p);
 			}
 
-			density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
+			density = steepConvolve(density);
+			//density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
 			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 9 * 2 + 1);
@@ -261,26 +261,17 @@ struct Sketch {
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
 				if (guidance(p) < mConfig.surfTensionThres)
 				{
-					// todo: move the  "* density(p)" back outside the if.
-					// todo: readd the safeNormalized()
-					//g = safeNormalized(g) * surfTension * density(p);
-					if(g != vec2(0.0, 0.0))
-						g = normalize(g) * mConfig.surfTension * density(p);
+					g *= mConfig.surfTension;
 				}
 				else
 				{
 					g *= -mConfig.incompressibilityCoef;
 				}
 
-				momentum(p) += g;
+				momentum(p) = g;
 			}
 
-			auto offsets = empty_like(momentum);
-			forxy(offsets) {
-				offsets(p) = momentum(p) / density(p);
-			}
-			advect(*material, offsets);
-			momentum = empty_like(momentum);
+			advect(*material, momentum);
 		}
 	}
 	void advect(Material& material, Array2D<vec2> offsets) {
