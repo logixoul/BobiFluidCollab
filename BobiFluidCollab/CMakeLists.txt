@@ -3,7 +3,7 @@
     ./*.cpp
 )
 
-add_executable (BobiFluidCollab ${SOURCES}  "precompiled.h")
+add_executable (BobiFluidCollab ${SOURCES}  "precompiled.h" "StefanMassPreservingSmoothenerSketch1.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET BobiFluidCollab PROPERTY CXX_STANDARD 20)

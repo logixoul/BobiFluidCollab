@@ -2,7 +2,8 @@
 #include <imgui.h>
 #include <imgui-SFML.h>
 
-#include "StefanFluidSketch1.h"
+//#include "StefanFluidSketch1.h"
+#include "StefanMassPreservingSmoothenerSketch1.h"
 
 static bool isMouseEvent(const sf::Event& eve)
 {
@@ -42,7 +43,7 @@ int main()
 		return -1;
 	}
 
-	StefanFluidSketch1 app(&window);
+	Sketch app(&window);
 	app.setup();
 	sf::Clock deltaClock;
 	ImGuiIO& io = ImGui::GetIO();

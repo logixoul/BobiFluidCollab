@@ -7,7 +7,7 @@
 
 struct Sketch {
 	struct Config {
-		float surfTensionThres = 2.245f;
+		float surfTensionThres = 0.5f;
 		float surfTension = 1.0f;
 		float gravity = .1f;
 		float incompressibilityCoef = 1.0f;
@@ -47,7 +47,7 @@ struct Sketch {
 		vec3 color;
 	};
 	Material mRedMaterial, mGreenMaterial;
-	vector<Material*> materials{ &mRedMaterial, &mGreenMaterial };
+	vector<Material*> materials{ &mRedMaterial /*, &mGreenMaterial*/ };
 
 	bool pause = false;
 	bool manipulateGreen = false;
@@ -134,7 +134,7 @@ struct Sketch {
 		forxy(mRedMaterial.density) {
 			vec3 totalColor = vec3(0.0f, 0.0f, 0.0f);
 			for (Material* material : materials) {
-				totalColor += glm::pow(material->color, vec3(1.0f*material->density(p)));
+				totalColor += glm::pow(material->color, vec3(1.0f * material->density(p)));
 			}
 			totalColor = vec3(1.0f) - vec3(1.0f, 1.0f, 1.0f) / totalColor;
 			//totalColor /= totalColor + vec3(1.0f);
@@ -156,7 +156,7 @@ struct Sketch {
 	void update()
 	{
 		mConfig.update();
-	
+
 		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
 		{
@@ -175,12 +175,14 @@ struct Sketch {
 				{
 					vec2 v = vec2(x, y) - vec2(scaledm);
 					float w = std::max(0.0f, 1.0f - length(v) / r);
+					w = std::min(w, 1.0f);
 					w = 3 * w * w - 2 * w * w * w;
-					
+
 					if (mLeftMouseButtonHeld) {
 						auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 
-						material->density.wr(x, y) += 1.f * w * 10.0;
+						//material->density.wr(x, y) += 1.f * w * 10.0;
+						material->density.wr(x, y) = mix(material->density.wr(x, y), 1.0f, w);
 					}
 					else if (mRightMouseButtonHeld) {
 						for (Material* material : materials) {
@@ -231,14 +233,14 @@ struct Sketch {
 		{
 			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
 			//if(length(g) != 0.0f) g = glm::normalize(g);
-			
+
 			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p) * mConfig.intermaterialRepelCoef;
 		}
 	}
 
 	void doFluidStep() {
-		repel(mRedMaterial, mGreenMaterial);
-		repel(mGreenMaterial, mRedMaterial);
+		//repel(mRedMaterial, mGreenMaterial);
+		//repel(mGreenMaterial, mRedMaterial);
 
 		for (auto material : materials) {
 			auto& momentum = material->momentum;
@@ -246,13 +248,14 @@ struct Sketch {
 
 			forxy(momentum)
 			{
-				momentum(p) += vec2(0.0f, mConfig.gravity) * density(p);
+				//momentum(p) += vec2(0.0f, mConfig.gravity) * density(p);
 			}
 
 			density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
-			momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
+			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 3 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 9 * 2 + 1);
+			//auto guidance = density.clone();
 			forxy(momentum)
 			{
 				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
@@ -261,7 +264,8 @@ struct Sketch {
 					// todo: move the  "* density(p)" back outside the if.
 					// todo: readd the safeNormalized()
 					//g = safeNormalized(g) * surfTension * density(p);
-					g = g * mConfig.surfTension * density(p);
+					if(g != vec2(0.0, 0.0))
+						g = normalize(g) * mConfig.surfTension * density(p);
 				}
 				else
 				{
@@ -276,6 +280,7 @@ struct Sketch {
 				offsets(p) = momentum(p) / density(p);
 			}
 			advect(*material, offsets);
+			momentum = empty_like(momentum);
 		}
 	}
 	void advect(Material& material, Array2D<vec2> offsets) {
