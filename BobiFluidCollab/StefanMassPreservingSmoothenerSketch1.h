@@ -21,7 +21,7 @@ struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
 		float surfTension = 12.0f;
-		float incompressibilityCoef = 0.7f;
+		float incompressibilityCoef = 2.7f;
 		float intermaterialRepelCoef = .5f;
 
 		void update() {
@@ -304,8 +304,8 @@ struct Sketch {
 			vec2 offset = offsets(p);
 			vec2 dst = vec2(p) + offset;
 
-			aaPoint<float, WrapModes::GetClamped>(density2, dst, density(p));
-			aaPoint<vec2, WrapModes::GetClamped>(momentum2, dst, momentum(p));
+			aaPoint<float, WrapModes::Get_WrapZeros>(density2, dst, density(p));
+			aaPoint<vec2, WrapModes::Get_WrapZeros>(momentum2, dst, momentum(p));
 		}
 		density = density2;
 		momentum = momentum2;

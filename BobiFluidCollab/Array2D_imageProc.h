@@ -6,8 +6,8 @@ template<class T>
 ivec2 wrapPoint(Array2D<T> const& src, ivec2 p)
 {
 	ivec2 wp = p;
-	wp.x %= src.w; if (wp.x < 0) wp.x += src.w;
-	wp.y %= src.h; if (wp.y < 0) wp.y += src.h;
+	wp.x %= src.w; while (wp.x < 0) wp.x += src.w;
+	wp.y %= src.h; while (wp.y < 0) wp.y += src.h;
 	return wp;
 }
 template<class T>
