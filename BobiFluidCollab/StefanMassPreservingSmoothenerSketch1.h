@@ -9,8 +9,7 @@ struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
 		float surfTension = 91.0f;
-		float gravity = .1f;
-		float incompressibilityCoef = 1.0f;
+		float incompressibilityCoef = 6.0f;
 		float intermaterialRepelCoef = .5f;
 		float kernelSteepness = 2.0f;
 
@@ -157,7 +156,8 @@ struct Sketch {
 		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
 		{
-			doFluidStep();
+			//for(int i = 0; i < 3; i++)
+				doFluidStep();
 
 		} // if ! pause
 		ivec2 scaledm = ivec2(vec2(mouseX * (float)sx, mouseY * (float)sy));
@@ -245,14 +245,14 @@ struct Sketch {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
-			density = gauss3_forwardMapping<float, WrapModes::GetClamped>(density);
+			density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetClamped>(density, 7 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 7 * 2 + 1);
 			//auto guidance = steepConvolve(density);
 			forxy(momentum)
 			{
-				auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
+				auto g = gradient_i<float, WrapModes::GetWrapped>(guidance, p);
 				if (guidance(p) < mConfig.surfTensionThres)
 				{
 					g *= mConfig.surfTension;
