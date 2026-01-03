@@ -5,13 +5,24 @@
 #include <imgui.h>
 #include "precompiled.h"
 
+template<class T, class Fetch>
+Array2D<T> get_divergence(Array2D<vec2>& src) {
+	Array2D<T> div(src.Size());
+	forxy(div) {
+		T dx = (Fetch::template fetch<vec2>(src, p.x + 1, p.y).x - Fetch::template fetch<vec2>(src, p.x - 1, p.y).x) * .5f;
+		T dy = (Fetch::template fetch<vec2>(src, p.x, p.y + 1).y - Fetch::template fetch<vec2>(src, p.x, p.y - 1).y) * .5f;
+		div(p) = dx + dy;
+	}
+	return div;
+}
+
+
 struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
-		float surfTension = 91.0f;
-		float incompressibilityCoef = 6.0f;
+		float surfTension = 33.0f;
+		float incompressibilityCoef = 16.0f;
 		float intermaterialRepelCoef = .5f;
-		float kernelSteepness = 2.0f;
 
 		void update() {
 			ImGui::Begin("Config");
@@ -156,7 +167,7 @@ struct Sketch {
 		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
 		{
-			//for(int i = 0; i < 3; i++)
+			for(int i = 0; i < 2; i++)
 				doFluidStep();
 
 		} // if ! pause
@@ -248,12 +259,15 @@ struct Sketch {
 			density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 7 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 5 * 2 + 1);
+			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
+			auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
 			//auto guidance = steepConvolve(density);
 			forxy(momentum)
 			{
-				auto g = gradient_i<float, WrapModes::GetWrapped>(guidance, p);
-				if (guidance(p) < mConfig.surfTensionThres)
+				auto g = grads(p);
+				auto pushForce = (guidance(p) - mConfig.surfTensionThres) / mConfig.surfTensionThres;
+				if (pushForce < 0)
 				{
 					g *= mConfig.surfTension;
 				}
@@ -262,7 +276,7 @@ struct Sketch {
 					g *= -mConfig.incompressibilityCoef;
 				}
 
-				momentum(p) = g;
+				momentum(p) = g ;
 			}
 
 			advect(*material, momentum);
@@ -275,42 +289,14 @@ struct Sketch {
 		auto density2 = Array2D<float>(sx, sy);
 		auto momentum2 = Array2D<vec2>(sx, sy, vec2());
 		int count = 0;
-		float sumOffsetY = 0; float div = 0;
 		forxy(density)
 		{
-			if (density(p) == 0.0f)
-				continue;
-
 			vec2 offset = offsets(p);
-			sumOffsetY += abs(offset.y); div++;
 			vec2 dst = vec2(p) + offset;
 
-			vec2 newEnergy = momentum(p);
-			bool bounced = false;
-			for (int dim = 0; dim <= 1; dim++) {
-				float maxVal = sz[dim] - 1;
-				if (dst[dim] > maxVal) {
-					newEnergy[dim] *= -1.0f;
-					dst[dim] = maxVal - (dst[dim] - maxVal);
-					//if(dim==1)
-						//cout << "dst[dim]=" << dst[dim] << endl;
-					bounced = true;
-				}
-				if (dst[dim] < 0) {
-					newEnergy[dim] *= -1.0f;
-					dst[dim] = -dst[dim];
-					bounced = true;
-				}
-			}
-			if (dst.y >= sz.y - 1)
-				count++;
-			//if(bounced)
-			//	aaPoint<float, WrapModes::NoWrap>(bounces_dbg, dst, 1);
 			aaPoint<float, WrapModes::GetClamped>(density2, dst, density(p));
-			aaPoint<vec2, WrapModes::GetClamped>(momentum2, dst, newEnergy);
+			aaPoint<vec2, WrapModes::GetClamped>(momentum2, dst, momentum(p));
 		}
-		//cout << "bugged=" << count << endl;
-		//cout << "sumOffsetY=" << sumOffsetY/div << endl;
 		density = density2;
 		momentum = momentum2;
 	}
