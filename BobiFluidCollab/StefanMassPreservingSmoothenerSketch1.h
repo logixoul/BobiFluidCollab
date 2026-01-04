@@ -21,7 +21,7 @@ struct Sketch {
 	struct Config {
 		float surfTensionThres = 0.5f;
 		float surfTension = 6.3f;
-		float incompressibilityCoef = 2.4f;
+		float incompressibilityCoef = 1.0f;
 		float intermaterialRepelCoef = .5f;
 
 		void update() {
@@ -250,10 +250,12 @@ struct Sketch {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
-			density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
+			//density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
+			density = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
-			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 1 * 2 + 1);
+			//auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 1 * 2 + 1);
+			auto guidance = density.clone();
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
 			//auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
 			//auto guidance = steepConvolve(density);
@@ -272,14 +274,14 @@ struct Sketch {
 				{
 					//float len = length(g);
 					//g /= len * len;
-					g /= here;
-					g *= mConfig.surfTension;
+					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/100.0);
 				}
 				else
 				{
-					g *= -mConfig.incompressibilityCoef;
+					g *= -mConfig.incompressibilityCoef;// *pushForce;
 				}
-
+				//if (length(g) > 50)
+					//cout << length(g) << endl;
 				momentum(p) = g ;
 			}
 

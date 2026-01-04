@@ -47,12 +47,30 @@ int main()
 	app.setup();
 	sf::Clock deltaClock;
 	ImGuiIO& io = ImGui::GetIO();
+	float smoothedFps = -1;
 	while (window.isOpen())
     {
-		ImGui::SFML::Update(window, deltaClock.restart());
+		sf::Time elapsed = deltaClock.restart();
+		ImGui::SFML::Update(window, elapsed);
+		const float fps = 1.0f / elapsed.asSeconds();
+		if (elapsed.asSeconds() != 0) {
+			if (smoothedFps == -1)
+				smoothedFps = fps;
+			else
+				smoothedFps = glm::mix(smoothedFps, fps, .1f);
+		}
 
 		app.update();
+
+		ImGui::Begin("FPS", nullptr,
+			ImGuiWindowFlags_NoDecoration |
+			ImGuiWindowFlags_AlwaysAutoResize |
+			ImGuiWindowFlags_NoFocusOnAppearing |
+			ImGuiWindowFlags_NoNav);
+		ImGui::Text("FPS: %.1f", smoothedFps);
+		ImGui::End();
 		app.draw();
+		
 
         while (const std::optional event = window.pollEvent())
         {
