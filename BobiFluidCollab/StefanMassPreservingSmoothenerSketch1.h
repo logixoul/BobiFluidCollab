@@ -188,11 +188,8 @@ struct Sketch {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
 		forxy(mRedMaterial.density) {
-			vec3 totalColor = vec3(0.0f, 0.0f, 0.0f);
-			for (Material* material : materials) {
-				totalColor += glm::pow(material->color, vec3(1.0f * material->density(p)));
-			}
-			totalColor = vec3(1.0f) - vec3(1.0f, 1.0f, 1.0f) / totalColor;
+			vec3 totalColor = vec3(1.0f * mRedMaterial.density(p));
+			totalColor /= totalColor + vec3(1.0f, 1.0f, 1.0f);
 			//totalColor /= totalColor + vec3(1.0f);
 			totalColor = glm::max(glm::min(totalColor, vec3(1.0f)), vec3(0.0f));
 			totalColor *= 255.0f;
@@ -243,7 +240,7 @@ struct Sketch {
 		auto material = &mRedMaterial;
 
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
-			Cell colorToAdd = manipulateGreen ? Cell(0.0, 0.2, 1.5) : Cell(1.5, 0.2, 0.0);
+			Cell colorToAdd = manipulateGreen ? Cell(0.0, 0.6, 1.5) : Cell(1.5, 0.2, 0.0);
 			Cell value = mLeftMouseButtonHeld ? colorToAdd : Cell(0.0);
 			for(float f = 0; f <= 1.0; f += .1f)
 				paintBlot(material->density, glm::mix(prevScaledm, scaledm, f), value);
