@@ -295,12 +295,11 @@ struct Sketch {
 
 			density = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
 			
-			auto guidance = density.clone();
-			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
+			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(density);
 			forxy(momentum)
 			{
 				auto g = grads(p);
-				auto here = guidance(p);
+				auto here = density(p);
 				if (here < mConfig.surfTensionThres)
 				{
 					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/10.0);
