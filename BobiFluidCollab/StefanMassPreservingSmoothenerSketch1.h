@@ -77,7 +77,7 @@ Array2D<T> boxBlur3x3(Array2D<T> const& in)
 
 struct Sketch {
 	struct Config {
-		float surfTensionThres = 0.5f;
+		float surfTensionThres = 0.293f;
 		float surfTension = 6.3f;
 		float incompressibilityCoef = 1.0f;
 		float intermaterialRepelCoef = .5f;
@@ -118,17 +118,13 @@ struct Sketch {
 	bool pause = false;
 	bool manipulateGreen = false;
 
-	Array2D<float> bounces_dbg;
-
-
-
 	Sketch(sf::RenderWindow* window) : mWindow(*window) {
 		sx = window->getSize().x / mScale;
 		sy = window->getSize().y / mScale;
 		sz = ivec2(sx, sy);
 
 		mRedMaterial = Material(sz);
-		mRedMaterial.color = vec3(0.2f, 0.4f, 1.1f); // blue
+		mRedMaterial.color = vec3(0.2f, 0.7f, 1.1f); // blue
 		mGreenMaterial = Material(sz);
 		mGreenMaterial.color = vec3(0.4f, 1.1f, 0.4f);
 		materials = { &mRedMaterial, &mGreenMaterial };
@@ -234,7 +230,6 @@ struct Sketch {
 	{
 		mConfig.update();
 
-		bounces_dbg = Array2D<float>(sx, sy, 0);
 		if (!pause)
 		{
 			for(int i = 0; i < 2; i++)
@@ -294,8 +289,9 @@ struct Sketch {
 			auto& density = material->density;
 
 			density = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
 			
-			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(density);
+			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
 			forxy(momentum)
 			{
 				auto g = grads(p);
@@ -311,40 +307,31 @@ struct Sketch {
 				momentum(p) = g ;
 			}
 
-			advect(*material, momentum);
-		}
-	}
-	void advect(Material& material, Array2D<vec2> offsets) {
-		auto& density = material.density;
-		auto& momentum = material.momentum;
+			auto density2 = Array2D<float>(sx, sy);
+			int count = 0;
+			const auto lowerBound = vec2(0.0f);
+			const auto upperBound = vec2(density.Size() - ivec2(2));
+			forxy(density)
+			{
+				float here = density(p);
+				vec2 offset = momentum(p);
+				vec2 dst;
+				do {
+					dst = vec2(p) + offset;
 
-		auto density2 = Array2D<float>(sx, sy);
-		auto momentum2 = Array2D<vec2>(sx, sy, vec2());
-		int count = 0;
-		const auto lowerBound = vec2(0.0f);
-		const auto upperBound = vec2(density.Size() - ivec2(2));
-		forxy(density)
-		{
-			float here = density(p);
-			vec2 offset = offsets(p);
-			vec2 dst;
-			do {
-				dst = vec2(p) + offset;
-
-				//dst = glm::clamp(dst, lowerBound, upperBound);
-				const float atDst = getBilinear(density, dst);
-				if (here < mConfig.surfTensionThres && atDst > mConfig.surfTensionThres)
-					offset *= .9f;
-				//else if (here > mConfig.surfTensionThres && atDst < mConfig.surfTensionThres)
-					//offset *= .9f;
-				else
-					break;
-			} while (true);
-			aaPoint<float, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
-			//aaPoint<vec2, WrapModes::NoWrap>(momentum2, dst, momentum(p));
+					//dst = glm::clamp(dst, lowerBound, upperBound);
+					const float atDst = getBilinear(density, dst);
+					if (here < mConfig.surfTensionThres && atDst > mConfig.surfTensionThres)
+						offset *= .9f;
+					else if (here > mConfig.surfTensionThres && atDst < mConfig.surfTensionThres)
+						offset *= .9f;
+					else
+						break;
+				} while (true);
+				aaPoint<float, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
+			}
+			density = density2;
 		}
-		density = density2;
-		momentum = momentum2;
 	}
 	
 	static void disableGLReadClamp() {
