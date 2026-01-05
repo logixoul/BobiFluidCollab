@@ -16,6 +16,64 @@ Array2D<T> get_divergence(Array2D<vec2>& src) {
 	return div;
 }
 
+// Optimized 3x3 box blur: uses WrapMode::fetch only for edge pixels. Interior pixels read directly from contiguous memory.
+template<class T, class WrapMode>
+Array2D<T> boxBlur3x3(Array2D<T> const& in)
+{
+	int w = in.w;
+	int h = in.h;
+	Array2D<T> out(w, h);
+	if (w <= 0 || h <= 0) return out;
+
+	T zero = ::zero<T>();
+	const float inv9 = 1.0f / 9.0f;
+
+	// Helper for edge pixels that need wrap/clamp handling via WrapMode
+	auto blurEdge = [&](int x, int y) {
+		T sum = zero;
+		Array2D<T>& nonConstIn = const_cast<Array2D<T>&>(in);
+		for (int dy = -1; dy <= 1; ++dy) {
+			for (int dx = -1; dx <= 1; ++dx) {
+				sum += WrapMode::template fetch<T>(nonConstIn, x + dx, y + dy);
+			}
+		}
+		out(x, y) = sum * inv9;
+		};
+
+	// If image is too small, compute every pixel via fetch
+	if (w < 3 || h < 3) {
+		for (int y = 0; y < h; ++y) for (int x = 0; x < w; ++x) blurEdge(x, y);
+		return out;
+	}
+
+	// Top row
+	for (int x = 0; x < w; ++x) blurEdge(x, 0);
+	// Bottom row
+	for (int x = 0; x < w; ++x) blurEdge(x, h - 1);
+	// Left and right edges for middle rows
+	for (int y = 1; y < h - 1; ++y) {
+		blurEdge(0, y);
+		blurEdge(w - 1, y);
+	}
+
+	// Interior: use direct pointer access for contiguous fast reads
+	for (int y = 1; y < h - 1; ++y) {
+		T* prevRow = in.data + (y - 1) * w;
+		T* curRow = in.data + y * w;
+		T* nextRow = in.data + (y + 1) * w;
+		for (int x = 1; x < w - 1; ++x) {
+			T sum = zero;
+			// unrolled 3x3 sum
+			sum += prevRow[x - 1]; sum += prevRow[x]; sum += prevRow[x + 1];
+			sum += curRow[x - 1]; sum += curRow[x]; sum += curRow[x + 1];
+			sum += nextRow[x - 1]; sum += nextRow[x]; sum += nextRow[x + 1];
+			out(x, y) = sum * inv9;
+		}
+	}
+
+	return out;
+}
+
 
 struct Sketch {
 	struct Config {
@@ -39,7 +97,7 @@ struct Sketch {
 	vec2 mousePos;
 	vec2 prevMousePos;
 
-	const int mScale = 5;
+	const int mScale = 2;
 	int sx;
 	int sy;
 	ivec2 sz;
@@ -230,28 +288,17 @@ struct Sketch {
 		return convolve<float, WrapModes::GetClamped>(in, kernel);
 	}
 
-	void repel(Material& affectedMaterial, Material& actingMaterial) {
-		auto guidance = steepConvolve(actingMaterial.density);
-		//auto guidance = gaussianBlur<float, WrapModes::GetClamped>(actingMaterial.density, 3 * 2 + 1);
-		forxy(affectedMaterial.momentum)
-		{
-			auto g = gradient_i<float, WrapModes::Get_WrapZeros>(guidance, p);
-			//if(length(g) != 0.0f) g = glm::normalize(g);
-
-			affectedMaterial.momentum(p) += -g * affectedMaterial.density(p) * mConfig.intermaterialRepelCoef;
-		}
-	}
-
 	void doFluidStep() {
-		//repel(mRedMaterial, mGreenMaterial);
-		//repel(mGreenMaterial, mRedMaterial);
-
 		for (auto material : materials) {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
 			//density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
 			density = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
+			
+			//density = ::boxBlur3x3<float, WrapModes::GetWrapped>(density);
+			//density = ::boxBlur3x3<float, WrapModes::GetWrapped>(density);
+
 			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
 
 			//auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 1 * 2 + 1);
@@ -262,26 +309,15 @@ struct Sketch {
 			forxy(momentum)
 			{
 				auto g = grads(p);
-				//if (g == vec2(0.0f, 0.0f))
-//					continue;
 				auto here = guidance(p);
-				/*auto gn = normalize(g);
-				auto prev = getBilinear(guidance, vec2(p) - gn);
-				auto next = getBilinear(guidance, vec2(p) + gn);
-				auto secondPartialDerivative = here - (prev + next) * .5f;*/
-				auto pushForce = (here - mConfig.surfTensionThres);
-				if (pushForce < 0)
+				if (here < mConfig.surfTensionThres)
 				{
-					//float len = length(g);
-					//g /= len * len;
 					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/100.0);
 				}
 				else
 				{
-					g *= -mConfig.incompressibilityCoef;// *pushForce;
+					g *= -mConfig.incompressibilityCoef;
 				}
-				//if (length(g) > 50)
-					//cout << length(g) << endl;
 				momentum(p) = g ;
 			}
 
@@ -295,33 +331,21 @@ struct Sketch {
 		auto density2 = Array2D<float>(sx, sy);
 		auto momentum2 = Array2D<vec2>(sx, sy, vec2());
 		int count = 0;
+		const auto lowerBound = vec2(0.0f);
+		const auto upperBound = vec2(density.Size() - ivec2(2));
 		forxy(density)
 		{
 			vec2 offset = offsets(p);
 			vec2 dst = vec2(p) + offset;
 
-			aaPoint<float, WrapModes::Get_WrapZeros>(density2, dst, density(p));
-			aaPoint<vec2, WrapModes::Get_WrapZeros>(momentum2, dst, momentum(p));
+			dst = glm::clamp(dst, lowerBound, upperBound);
+			aaPoint<float, WrapModes::NoWrap>(density2, dst, density(p));
+			//aaPoint<vec2, WrapModes::NoWrap>(momentum2, dst, momentum(p));
 		}
 		density = density2;
 		momentum = momentum2;
 	}
-	template<class T, class FetchFunc>
-	static Array2D<T> gauss3_forwardMapping(Array2D<T> src) {
-		T zero = T(0);
-		Array2D<T> dst1(src.w, src.h);
-		Array2D<T> dst2(src.w, src.h);
-		forxy(dst1) {
-			dst1(p) = .25f * (2.0f * FetchFunc::fetch(src, p.x, p.y) + get_clamped(src, p.x - 1, p.y) + FetchFunc::fetch(src, p.x + 1, p.y));
-		}
-		forxy(dst1) {
-			FetchFunc::fetch(dst2, p.x, p.y - 1) += .25f * dst1(p);
-			FetchFunc::fetch(dst2, p.x, p.y) += .5f * dst1(p);
-			FetchFunc::fetch(dst2, p.x, p.y + 1) += .25f * dst1(p);
-		}
-		return dst2;
-	}
-
+	
 	static void disableGLReadClamp() {
 		glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE);
 	}

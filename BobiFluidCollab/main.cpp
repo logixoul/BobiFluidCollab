@@ -33,7 +33,8 @@ static bool isKeyboardEvent(const sf::Event& eve)
 int main()
 {
     sf::RenderWindow window(sf::VideoMode({ 800, 800 }), "My window");
-	window.setFramerateLimit(60);
+	//window.setFramerateLimit(60);
+	window.setVerticalSyncEnabled(false);
 	if (!ImGui::SFML::Init(window))
 		return -1;
 
@@ -48,18 +49,17 @@ int main()
 	sf::Clock deltaClock;
 	ImGuiIO& io = ImGui::GetIO();
 	float smoothedFps = -1;
+	int currentFrame = 0;
 	while (window.isOpen())
     {
 		sf::Time elapsed = deltaClock.restart();
 		ImGui::SFML::Update(window, elapsed);
 		const float fps = 1.0f / elapsed.asSeconds();
-		if (elapsed.asSeconds() != 0) {
-			if (smoothedFps == -1)
-				smoothedFps = fps;
-			else
-				smoothedFps = glm::mix(smoothedFps, fps, .1f);
-		}
-
+		if (currentFrame == 2)
+			smoothedFps = fps;
+		else if(currentFrame >= 3)
+			smoothedFps = glm::mix(smoothedFps, fps, .1f);
+	
 		app.update();
 
 		ImGui::Begin("FPS", nullptr,
@@ -85,6 +85,7 @@ int main()
 
 			event->visit(app);
         }
+		currentFrame++;
     }
 	ImGui::SFML::Shutdown();
 }

@@ -167,6 +167,8 @@ Array2D<T> gauss3(Array2D<T> src) {
 	return dst2;
 }
 
+
+
 template<class T>
 T& get_wrapZeros(Array2D<T>& src, int x, int y)
 {
