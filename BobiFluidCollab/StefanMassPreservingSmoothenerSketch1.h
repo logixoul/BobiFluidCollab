@@ -5,6 +5,36 @@
 #include <imgui.h>
 #include "precompiled.h"
 
+sf::Color hsv(int hue, float sat, float val)
+{
+	hue %= 360;
+	while (hue < 0) hue += 360;
+
+	if (sat < 0.f) sat = 0.f;
+	if (sat > 1.f) sat = 1.f;
+
+	if (val < 0.f) val = 0.f;
+	if (val > 1.f) val = 1.f;
+
+	int h = hue / 60;
+	float f = float(hue) / 60 - h;
+	float p = val * (1.f - sat);
+	float q = val * (1.f - sat * f);
+	float t = val * (1.f - sat * (1 - f));
+
+	switch (h)
+	{
+	default:
+	case 0:
+	case 6: return sf::Color(val * 255, t * 255, p * 255);
+	case 1: return sf::Color(q * 255, val * 255, p * 255);
+	case 2: return sf::Color(p * 255, val * 255, t * 255);
+	case 3: return sf::Color(p * 255, q * 255, val * 255);
+	case 4: return sf::Color(t * 255, p * 255, val * 255);
+	case 5: return sf::Color(val * 255, p * 255, q * 255);
+	}
+}
+
 template<class T, class Fetch>
 Array2D<T> get_divergence(Array2D<vec2>& src) {
 	Array2D<T> div(src.Size());
@@ -188,8 +218,8 @@ struct Sketch {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
 		forxy(mRedMaterial.density) {
-			vec3 totalColor = vec3(1.0f * mRedMaterial.density(p));
-			totalColor /= totalColor + vec3(1.0f, 1.0f, 1.0f);
+			vec3 totalColor = mRedMaterial.density(p);
+			//totalColor /= totalColor + vec3(1.0f, 1.0f, 1.0f);
 			//totalColor /= totalColor + vec3(1.0f);
 			totalColor = glm::max(glm::min(totalColor, vec3(1.0f)), vec3(0.0f));
 			totalColor *= 255.0f;
@@ -239,9 +269,14 @@ struct Sketch {
 		//auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
 		auto material = &mRedMaterial;
 
+		static float hue = 0;
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
-			Cell colorToAdd = manipulateGreen ? Cell(0.0, 0.6, 1.5) : Cell(1.5, 0.2, 0.0);
-			Cell value = mLeftMouseButtonHeld ? colorToAdd : Cell(0.0);
+			if (mLeftMouseButtonHeld)
+				hue += 10;
+			auto colorToPut = ::hsv(hue, 1.0, .5);
+			Cell cellToPut = Cell(colorToPut.r, colorToPut.g, colorToPut.b)/255.0f;
+			//Cell colorToPut = manipulateGreen ? Cell(0.0, 0.6, 1.5) : Cell(1.5, 0.6, 0.0);
+			Cell value = mLeftMouseButtonHeld ? cellToPut : Cell(0.0);
 			for(float f = 0; f <= 1.0; f += .1f)
 				paintBlot(material->density, glm::mix(prevScaledm, scaledm, f), value);
 		}
@@ -288,12 +323,12 @@ struct Sketch {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
-			density = gaussianBlur<Cell, WrapModes::GetWrapped>(density, 2 * 2 + 1);
+			density = gaussianBlur<Cell, WrapModes::GetWrapped>(density, 4 * 2 + 1);
 			Array2D<float> densityMono(density.Size());
 			forxy(density) {
 				densityMono(p) = glm::dot(density(p), vec3(1.0/3.0));
 			}
-			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(densityMono, 2 * 2 + 1);
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(densityMono, 4 * 2 + 1);
 			
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
 			forxy(momentum)
@@ -306,7 +341,7 @@ struct Sketch {
 				}
 				else
 				{
-					g *= -mConfig.incompressibilityCoef;
+					//g *= -mConfig.incompressibilityCoef;
 				}
 				momentum(p) = g ;
 			}
