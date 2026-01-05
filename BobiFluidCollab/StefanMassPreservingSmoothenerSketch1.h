@@ -132,20 +132,8 @@ struct Sketch {
 	int sx;
 	int sy;
 	ivec2 sz;
-	struct Material {
-		Material() {
-		}
-		Material(ivec2 size) {
-			density = Array2D<Cell>(size);
-			momentum = Array2D<vec2>(size);
-		}
-		Array2D<Cell> density;
-		Array2D<vec2> momentum;
-		vec3 color;
-	};
-	Material mRedMaterial, mGreenMaterial;
-	vector<Material*> materials{ &mRedMaterial /*, &mGreenMaterial*/ };
-
+	Array2D<Cell> density;
+	
 	bool pause = false;
 	bool manipulateGreen = false;
 
@@ -153,12 +141,8 @@ struct Sketch {
 		sx = window->getSize().x / mScale;
 		sy = window->getSize().y / mScale;
 		sz = ivec2(sx, sy);
-
-		mRedMaterial = Material(sz);
-		mRedMaterial.color = vec3(0.2f, 0.7f, 1.1f); // blue
-		mGreenMaterial = Material(sz);
-		mGreenMaterial.color = vec3(0.4f, 1.1f, 0.4f);
-		materials = { &mRedMaterial, &mGreenMaterial };
+		density = Array2D<Cell>(sz);
+		density = Array2D<Cell>(sz);
 	}
 	void setup()
 	{
@@ -209,16 +193,13 @@ struct Sketch {
 		// All unhandled events will end up here
 	}
 	void reset() {
-		for (Material* material : materials) {
-			std::fill(material->density.begin(), material->density.end(), Cell(0.0f));
-			std::fill(material->momentum.begin(), material->momentum.end(), vec2());
-		}
+		std::fill(density.begin(), density.end(), Cell(0.0f));
 	}
 	void draw() {
 		mWindow.clear(sf::Color::Black);
 		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
-		forxy(mRedMaterial.density) {
-			vec3 totalColor = mRedMaterial.density(p);
+		forxy(density) {
+			vec3 totalColor = density(p);
 			//totalColor /= totalColor + vec3(1.0f, 1.0f, 1.0f);
 			//totalColor /= totalColor + vec3(1.0f);
 			totalColor = glm::max(glm::min(totalColor, vec3(1.0f)), vec3(0.0f));
@@ -260,25 +241,24 @@ struct Sketch {
 
 		if (!pause)
 		{
-			for(int i = 0; i < 2; i++)
+			//for(int i = 0; i < 2; i++)
 				doFluidStep();
 
 		} // if ! pause
 		ivec2 scaledm = ivec2(vec2(mousePos) / float(mScale));
 		ivec2 prevScaledm = ivec2(vec2(prevMousePos) / float(mScale));
-		//auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
-		auto material = &mRedMaterial;
-
+		
 		static float hue = 0;
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
 			if (mLeftMouseButtonHeld)
 				hue += 10;
 			auto colorToPut = ::hsv(hue, 1.0, .5);
 			Cell cellToPut = Cell(colorToPut.r, colorToPut.g, colorToPut.b)/255.0f;
+			cellToPut /= glm::dot(cellToPut, vec3(1.0 / 3.0));
 			//Cell colorToPut = manipulateGreen ? Cell(0.0, 0.6, 1.5) : Cell(1.5, 0.6, 0.0);
 			Cell value = mLeftMouseButtonHeld ? cellToPut : Cell(0.0);
 			for(float f = 0; f <= 1.0; f += .1f)
-				paintBlot(material->density, glm::mix(prevScaledm, scaledm, f), value);
+				paintBlot(density, glm::mix(prevScaledm, scaledm, f), value*.4f);
 		}
 	}
 
@@ -319,9 +299,7 @@ struct Sketch {
 	}
 
 	void doFluidStep() {
-		for (auto material : materials) {
-			auto& momentum = material->momentum;
-			auto& density = material->density;
+			Array2D<vec2> momentum(sx, sy);
 
 			density = gaussianBlur<Cell, WrapModes::GetWrapped>(density, 4 * 2 + 1);
 			Array2D<float> densityMono(density.Size());
@@ -370,7 +348,6 @@ struct Sketch {
 				aaPoint<Cell, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
 			}
 			density = density2;
-		}
 	}
 	
 	static void disableGLReadClamp() {
