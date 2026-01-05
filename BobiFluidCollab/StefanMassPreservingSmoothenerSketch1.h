@@ -97,7 +97,7 @@ struct Sketch {
 	vec2 mousePos;
 	vec2 prevMousePos;
 
-	const int mScale = 2;
+	const int mScale = 4;
 	int sx;
 	int sy;
 	ivec2 sz;
@@ -128,7 +128,7 @@ struct Sketch {
 		sz = ivec2(sx, sy);
 
 		mRedMaterial = Material(sz);
-		mRedMaterial.color = vec3(1.1f, 0.4f, 0.4f);
+		mRedMaterial.color = vec3(0.2f, 0.4f, 1.1f); // blue
 		mGreenMaterial = Material(sz);
 		mGreenMaterial.color = vec3(0.4f, 1.1f, 0.4f);
 		materials = { &mRedMaterial, &mGreenMaterial };
@@ -293,26 +293,17 @@ struct Sketch {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
-			//density = gauss3_forwardMapping<float, WrapModes::GetWrapped>(density);
 			density = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
 			
-			//density = ::boxBlur3x3<float, WrapModes::GetWrapped>(density);
-			//density = ::boxBlur3x3<float, WrapModes::GetWrapped>(density);
-
-			//momentum = gauss3_forwardMapping<vec2, WrapModes::GetClamped>(momentum);
-
-			//auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 1 * 2 + 1);
 			auto guidance = density.clone();
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
-			//auto div = ::get_divergence<float, WrapModes::GetWrapped>(grads);
-			//auto guidance = steepConvolve(density);
 			forxy(momentum)
 			{
 				auto g = grads(p);
 				auto here = guidance(p);
 				if (here < mConfig.surfTensionThres)
 				{
-					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/100.0);
+					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/10.0);
 				}
 				else
 				{
@@ -335,11 +326,22 @@ struct Sketch {
 		const auto upperBound = vec2(density.Size() - ivec2(2));
 		forxy(density)
 		{
+			float here = density(p);
 			vec2 offset = offsets(p);
-			vec2 dst = vec2(p) + offset;
+			vec2 dst;
+			do {
+				dst = vec2(p) + offset;
 
-			dst = glm::clamp(dst, lowerBound, upperBound);
-			aaPoint<float, WrapModes::NoWrap>(density2, dst, density(p));
+				//dst = glm::clamp(dst, lowerBound, upperBound);
+				const float atDst = getBilinear(density, dst);
+				if (here < mConfig.surfTensionThres && atDst > mConfig.surfTensionThres)
+					offset *= .9f;
+				//else if (here > mConfig.surfTensionThres && atDst < mConfig.surfTensionThres)
+					//offset *= .9f;
+				else
+					break;
+			} while (true);
+			aaPoint<float, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
 			//aaPoint<vec2, WrapModes::NoWrap>(momentum2, dst, momentum(p));
 		}
 		density = density2;
