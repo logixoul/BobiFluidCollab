@@ -74,6 +74,7 @@ Array2D<T> boxBlur3x3(Array2D<T> const& in)
 	return out;
 }
 
+typedef glm::vec3 Cell;
 
 struct Sketch {
 	struct Config {
@@ -105,10 +106,10 @@ struct Sketch {
 		Material() {
 		}
 		Material(ivec2 size) {
-			density = Array2D<float>(size);
+			density = Array2D<Cell>(size);
 			momentum = Array2D<vec2>(size);
 		}
-		Array2D<float> density;
+		Array2D<Cell> density;
 		Array2D<vec2> momentum;
 		vec3 color;
 	};
@@ -179,7 +180,7 @@ struct Sketch {
 	}
 	void reset() {
 		for (Material* material : materials) {
-			std::fill(material->density.begin(), material->density.end(), 0.0f);
+			std::fill(material->density.begin(), material->density.end(), Cell(0.0f));
 			std::fill(material->momentum.begin(), material->momentum.end(), vec2());
 		}
 	}
@@ -208,7 +209,7 @@ struct Sketch {
 		ImGui::SFML::Render(mWindow);
 		mWindow.display();
 	}
-	void paintBlot(Array2D<float> dest, ivec2 center, float value) {
+	void paintBlot(Array2D<Cell> dest, ivec2 center, Cell value) {
 		int r = 30 / mScale;
 		ivec2 areaTopLeft = center - ivec2(r, r);
 		ivec2 areaBottomRight = center + ivec2(r, r);
@@ -222,7 +223,7 @@ struct Sketch {
 				w = std::min(w, 1.0f);
 				w = 3 * w * w - 2 * w * w * w;
 
-				dest.wr(x, y) = mix(dest.wr(x, y), value, w);
+				dest.wr(x, y) = glm::mix(dest.wr(x, y), value, w);
 			}
 		}
 	}
@@ -238,10 +239,12 @@ struct Sketch {
 		} // if ! pause
 		ivec2 scaledm = ivec2(vec2(mousePos) / float(mScale));
 		ivec2 prevScaledm = ivec2(vec2(prevMousePos) / float(mScale));
-		auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
+		//auto material = manipulateGreen ? &mGreenMaterial : &mRedMaterial;
+		auto material = &mRedMaterial;
 
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
-			float value = mLeftMouseButtonHeld ? 1.0 : 0.0;
+			Cell colorToAdd = manipulateGreen ? Cell(0.0, 0.2, 1.5) : Cell(1.5, 0.2, 0.0);
+			Cell value = mLeftMouseButtonHeld ? colorToAdd : Cell(0.0);
 			for(float f = 0; f <= 1.0; f += .1f)
 				paintBlot(material->density, glm::mix(prevScaledm, scaledm, f), value);
 		}
@@ -288,14 +291,18 @@ struct Sketch {
 			auto& momentum = material->momentum;
 			auto& density = material->density;
 
-			density = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
-			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(density, 2 * 2 + 1);
+			density = gaussianBlur<Cell, WrapModes::GetWrapped>(density, 2 * 2 + 1);
+			Array2D<float> densityMono(density.Size());
+			forxy(density) {
+				densityMono(p) = glm::dot(density(p), vec3(1.0/3.0));
+			}
+			auto guidance = gaussianBlur<float, WrapModes::GetWrapped>(densityMono, 2 * 2 + 1);
 			
 			auto grads = ::get_gradients<float, WrapModes::GetWrapped>(guidance);
 			forxy(momentum)
 			{
 				auto g = grads(p);
-				auto here = density(p);
+				auto here = densityMono(p);
 				if (here < mConfig.surfTensionThres)
 				{
 					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/10.0);
@@ -307,28 +314,28 @@ struct Sketch {
 				momentum(p) = g ;
 			}
 
-			auto density2 = Array2D<float>(sx, sy);
+			auto density2 = Array2D<Cell>(sx, sy, nofill());
 			int count = 0;
 			const auto lowerBound = vec2(0.0f);
 			const auto upperBound = vec2(density.Size() - ivec2(2));
 			forxy(density)
 			{
-				float here = density(p);
+				float hereMono = densityMono(p);
 				vec2 offset = momentum(p);
 				vec2 dst;
 				do {
 					dst = vec2(p) + offset;
 
 					//dst = glm::clamp(dst, lowerBound, upperBound);
-					const float atDst = getBilinear(density, dst);
-					if (here < mConfig.surfTensionThres && atDst > mConfig.surfTensionThres)
+					const float atDst = getBilinear(densityMono, dst);
+					if (hereMono < mConfig.surfTensionThres && atDst > mConfig.surfTensionThres)
 						offset *= .9f;
-					else if (here > mConfig.surfTensionThres && atDst < mConfig.surfTensionThres)
+					else if (hereMono > mConfig.surfTensionThres && atDst < mConfig.surfTensionThres)
 						offset *= .9f;
 					else
 						break;
 				} while (true);
-				aaPoint<float, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
+				aaPoint<Cell, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
 			}
 			density = density2;
 		}
