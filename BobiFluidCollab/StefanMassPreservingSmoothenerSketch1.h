@@ -135,7 +135,6 @@ struct Sketch {
 	Array2D<Cell> density;
 	
 	bool pause = false;
-	bool manipulateGreen = false;
 
 	Sketch(sf::RenderWindow* window) : mWindow(*window) {
 		sx = window->getSize().x / mScale;
@@ -158,10 +157,6 @@ struct Sketch {
 		if (e.code == sf::Keyboard::Key::P)
 		{
 			pause = !pause;
-		}
-		if (e.code == sf::Keyboard::Key::G)
-		{
-			this->manipulateGreen = !this->manipulateGreen;
 		}
 	}
 	void operator()(const sf::Event::MouseButtonPressed& e) {
@@ -251,11 +246,10 @@ struct Sketch {
 		static float hue = 0;
 		if (mLeftMouseButtonHeld || mRightMouseButtonHeld) {
 			if (mLeftMouseButtonHeld)
-				hue += 10;
+				hue += glm::distance<float>(vec2(scaledm), vec2(prevScaledm));
 			auto colorToPut = ::hsv(hue, 1.0, .5);
 			Cell cellToPut = Cell(colorToPut.r, colorToPut.g, colorToPut.b)/255.0f;
 			cellToPut /= glm::dot(cellToPut, vec3(1.0 / 3.0));
-			//Cell colorToPut = manipulateGreen ? Cell(0.0, 0.6, 1.5) : Cell(1.5, 0.6, 0.0);
 			Cell value = mLeftMouseButtonHeld ? cellToPut : Cell(0.0);
 			for(float f = 0; f <= 1.0; f += .1f)
 				paintBlot(density, glm::mix(prevScaledm, scaledm, f), value*.4f);
@@ -316,10 +310,6 @@ struct Sketch {
 				if (here < mConfig.surfTensionThres)
 				{
 					g *= mConfig.surfTension / (here+mConfig.surfTensionThres/10.0);
-				}
-				else
-				{
-					//g *= -mConfig.incompressibilityCoef;
 				}
 				momentum(p) = g ;
 			}
