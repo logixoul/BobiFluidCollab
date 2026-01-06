@@ -35,17 +35,6 @@ sf::Color hsv(int hue, float sat, float val)
 	}
 }
 
-template<class T, class Fetch>
-Array2D<T> get_divergence(Array2D<vec2>& src) {
-	Array2D<T> div(src.Size());
-	forxy(div) {
-		T dx = (Fetch::template fetch<vec2>(src, p.x + 1, p.y).x - Fetch::template fetch<vec2>(src, p.x - 1, p.y).x) * .5f;
-		T dy = (Fetch::template fetch<vec2>(src, p.x, p.y + 1).y - Fetch::template fetch<vec2>(src, p.x, p.y - 1).y) * .5f;
-		div(p) = dx + dy;
-	}
-	return div;
-}
-
 // Optimized 3x3 box blur: uses WrapMode::fetch only for edge pixels. Interior pixels read directly from contiguous memory.
 template<class T, class WrapMode>
 Array2D<T> boxBlur3x3(Array2D<T> const& in)
@@ -111,7 +100,6 @@ struct Sketch {
 		float surfTensionThres = 0.293f;
 		float surfTension = 6.3f;
 		float incompressibilityCoef = 1.0f;
-		float intermaterialRepelCoef = .5f;
 
 		void update() {
 			ImGui::Begin("Config");
@@ -129,23 +117,17 @@ struct Sketch {
 	vec2 prevMousePos;
 
 	const int mScale = 4;
-	int sx;
-	int sy;
-	ivec2 sz;
 	Array2D<Cell> density;
 	
 	bool pause = false;
 
 	Sketch(sf::RenderWindow* window) : mWindow(*window) {
-		sx = window->getSize().x / mScale;
-		sy = window->getSize().y / mScale;
-		sz = ivec2(sx, sy);
-		density = Array2D<Cell>(sz);
-		density = Array2D<Cell>(sz);
+		int sx = window->getSize().x / mScale;
+		int sy = window->getSize().y / mScale;
+		density = Array2D<Cell>(sx, sy);
 	}
 	void setup()
 	{
-		disableGLReadClamp();
 		reset();
 	}
 	void operator()(const sf::Event::KeyPressed& e)
@@ -192,18 +174,16 @@ struct Sketch {
 	}
 	void draw() {
 		mWindow.clear(sf::Color::Black);
-		sf::Image toUpload(sf::Vector2u(sx, sy), sf::Color());
+		sf::Image toUpload(sf::Vector2u(density.w, density.h), sf::Color());
 		forxy(density) {
 			vec3 totalColor = density(p);
-			//totalColor /= totalColor + vec3(1.0f, 1.0f, 1.0f);
-			//totalColor /= totalColor + vec3(1.0f);
 			totalColor = glm::max(glm::min(totalColor, vec3(1.0f)), vec3(0.0f));
 			totalColor *= 255.0f;
 			auto totalColorByte = glm::tvec3<unsigned char>(totalColor);
 			toUpload.setPixel(sf::Vector2u(p.x, p.y), sf::Color(totalColorByte.x, totalColorByte.y, totalColorByte.z));
 		}
 
-		sf::Texture tex(sf::Vector2u(sx, sy));
+		sf::Texture tex(toUpload.getSize());
 		tex.update(toUpload);
 		tex.setSmooth(true);
 		sf::Sprite sprite(tex);
@@ -256,44 +236,9 @@ struct Sketch {
 		}
 	}
 
-	template<class T, class FetchFunc>
-	static Array2D<T> convolve(Array2D<T> in, Array2D<float> kernel) {
-		int r = kernel.w / 2;
-		auto out = ::empty_like(in);
-		forxy(out) {
-			float sum = 0.0f;
-			for (int kx = -r; kx < r; kx++) {
-				for (int ky = -r; ky < r; ky++) {
-					sum += kernel(kx + r, ky + r) * FetchFunc::template fetch<T>(in, p.x + kx, p.y + ky);
-				}
-			}
-			out(p) = sum;
-		}
-		return out;
-	}
-
-	Array2D<float> steepConvolve(Array2D<float> in) {
-		Array2D<float> kernel(7, 7);
-		ivec2 center = kernel.Size() / 2;
-		int r = kernel.w / 2;
-		forxy(kernel) {
-			ivec2 p2 = p - center;
-			vec2 p2f = vec2(p2);
-			float distance = length(p2f);
-			distance = std::min<float>(distance, r);
-			//if (distance == 0)
-			//	distance = .1;
-			kernel(p) = pow(1 - distance / r, 2.0f);
-		}
-		auto kernelSum = ::accumulate(kernel.begin(), kernel.end(), 0.0f);
-		forxy(kernel) {
-			kernel(p) /= kernelSum;
-		}
-		return convolve<float, WrapModes::GetClamped>(in, kernel);
-	}
-
+	
 	void doFluidStep() {
-			Array2D<vec2> momentum(sx, sy);
+			Array2D<vec2> momentum(density.Size());
 
 			density = gaussianBlur<Cell, WrapModes::GetWrapped>(density, 4 * 2 + 1);
 			Array2D<float> densityMono(density.Size());
@@ -314,10 +259,10 @@ struct Sketch {
 				momentum(p) = g ;
 			}
 
-			auto density2 = Array2D<Cell>(sx, sy, nofill());
+			auto density2 = empty_like(density);
 			int count = 0;
-			const auto lowerBound = vec2(0.0f);
-			const auto upperBound = vec2(density.Size() - ivec2(2));
+			//const auto lowerBound = vec2(0.0f);
+			//const auto upperBound = vec2(density.Size() - ivec2(2));
 			forxy(density)
 			{
 				float hereMono = densityMono(p);
@@ -338,9 +283,5 @@ struct Sketch {
 				aaPoint<Cell, WrapModes::WrapModes::GetWrapped>(density2, dst, density(p));
 			}
 			density = density2;
-	}
-	
-	static void disableGLReadClamp() {
-		glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE);
 	}
 };

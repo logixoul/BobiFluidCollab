@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #define MULTILINE(...) #__VA_ARGS__
 
-typedef unsigned char byte;
+//typedef unsigned char byte;
 
 template<class T>
 class ArrayDeleter

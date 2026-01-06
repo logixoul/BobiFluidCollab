@@ -30,7 +30,10 @@ static bool isKeyboardEvent(const sf::Event& eve)
 	return false;
 }
 
-int main()
+#ifdef _WIN32
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) { return main(__argc, __argv); }
+#endif
+int main(int argc, char** argv)
 {
     sf::RenderWindow window(sf::VideoMode({ 800, 800 }), "My window");
 	//window.setFramerateLimit(60);

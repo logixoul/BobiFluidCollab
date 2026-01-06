@@ -1,0 +1,46 @@
+template<class T, class Fetch>
+Array2D<T> get_divergence(Array2D<vec2>& src) {
+	Array2D<T> div(src.Size());
+	forxy(div) {
+		T dx = (Fetch::template fetch<vec2>(src, p.x + 1, p.y).x - Fetch::template fetch<vec2>(src, p.x - 1, p.y).x) * .5f;
+		T dy = (Fetch::template fetch<vec2>(src, p.x, p.y + 1).y - Fetch::template fetch<vec2>(src, p.x, p.y - 1).y) * .5f;
+		div(p) = dx + dy;
+	}
+	return div;
+}
+
+template<class T, class FetchFunc>
+	static Array2D<T> convolve(Array2D<T> in, Array2D<float> kernel) {
+		int r = kernel.w / 2;
+		auto out = ::empty_like(in);
+		forxy(out) {
+			float sum = 0.0f;
+			for (int kx = -r; kx < r; kx++) {
+				for (int ky = -r; ky < r; ky++) {
+					sum += kernel(kx + r, ky + r) * FetchFunc::template fetch<T>(in, p.x + kx, p.y + ky);
+				}
+			}
+			out(p) = sum;
+		}
+		return out;
+	}
+
+	Array2D<float> steepConvolve(Array2D<float> in) {
+		Array2D<float> kernel(7, 7);
+		ivec2 center = kernel.Size() / 2;
+		int r = kernel.w / 2;
+		forxy(kernel) {
+			ivec2 p2 = p - center;
+			vec2 p2f = vec2(p2);
+			float distance = length(p2f);
+			distance = std::min<float>(distance, r);
+			//if (distance == 0)
+			//	distance = .1;
+			kernel(p) = pow(1 - distance / r, 2.0f);
+		}
+		auto kernelSum = ::accumulate(kernel.begin(), kernel.end(), 0.0f);
+		forxy(kernel) {
+			kernel(p) /= kernelSum;
+		}
+		return convolve<float, WrapModes::GetClamped>(in, kernel);
+	}
